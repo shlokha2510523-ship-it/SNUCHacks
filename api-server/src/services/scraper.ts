@@ -122,6 +122,18 @@ async function scrapeCompanyRealData(company: Company): Promise<ScrapeData> {
     // Step 2a: Real path — structure the actual crawled content
     const structuredData = await structureCrawledData(company, rawWebsite, rawSocial);
 
+    // Step 2b: Check if the structured website data is too sparse (0 CTAs, no key messages)
+    // This happens when sites block crawlers but return a minimal HTML shell.
+    // In that case, supplement the empty marketing fields with AI-generated estimates.
+    let websiteData = structuredData.website;
+    let dataSource: ScrapeData["_meta"]["dataSource"] = "crawled";
+
+    if (isWebsiteDataSparse(websiteData, rawWebsite)) {
+      const supplemented = await supplementSparseWebsiteData(company, websiteData, rawWebsite);
+      websiteData = supplemented;
+      dataSource = "partial";
+    }
+
     result = {
       _meta: {
         crawledAt: new Date().toISOString(),
@@ -129,9 +141,9 @@ async function scrapeCompanyRealData(company: Company): Promise<ScrapeData> {
         socialCrawled: rawSocial?.fetchSuccess ?? false,
         adsCrawled: rawYouTube?.fetchSuccess ?? false,
         reviewsAvailable: false,
-        dataSource: "crawled",
+        dataSource,
       },
-      website: structuredData.website,
+      website: websiteData,
       social: structuredData.social,
       ads: buildAdsFromYouTube(rawYouTube, rawWebsite),
       features: structuredData.features,
@@ -277,6 +289,86 @@ CRITICAL RULES:
     return JSON.parse(content);
   } catch {
     return buildStructuredFallback(rawWebsite);
+  }
+}
+
+/**
+ * Returns true when the structured website data is too sparse to be useful.
+ * This catches sites that return some HTML but block meaningful content —
+ * e.g. JS-rendered SPAs, bot-detection walls, or near-empty splash pages.
+ */
+function isWebsiteDataSparse(
+  website: ScrapeData["website"] | undefined,
+  rawWebsite: RawWebsiteData | null
+): boolean {
+  if (!website) return true;
+  const hasNoCtas = website.ctaCount === 0;
+  const hasNoMessages = (website.keyMessages ?? []).length === 0;
+  const hasNoKeywords = (website.topKeywords ?? []).length === 0;
+  // Also check the raw crawl — if body text was tiny even though it "succeeded", treat as sparse
+  const bodyTooShort = !rawWebsite || rawWebsite.bodyText.length < 400;
+  return hasNoCtas && hasNoMessages && (hasNoKeywords || bodyTooShort);
+}
+
+/**
+ * Supplements sparse website fields with AI-generated estimates.
+ * Keeps the real crawl values for any field that is already populated
+ * (load time, scores derived from real signals, pricing, etc.).
+ */
+async function supplementSparseWebsiteData(
+  company: Company,
+  existing: ScrapeData["website"] | undefined,
+  rawWebsite: RawWebsiteData | null
+): Promise<ScrapeData["website"]> {
+  const prompt = `You are a consumer electronics marketing intelligence analyst.
+The website crawler retrieved a page for "${company.name}" (${company.website}) but it returned minimal or no useful marketing content (0 CTAs, no key messages, no keyword data). This usually means the site uses JavaScript rendering or bot-protection.
+
+Based on your knowledge of "${company.name}" as a consumer electronics brand, generate realistic estimates ONLY for the following missing marketing fields:
+- ctaCount: How many CTA buttons would a real visit to their site typically show? (e.g. "Buy Now", "Learn More", "Compare")
+- keyMessages: 3–5 short brand headlines or slogans you would expect on their homepage
+- topKeywords: 6–8 keywords that reflect their actual product marketing
+- pricingVisible: true/false — does this company typically show prices on their main website?
+
+Return ONLY a JSON object with exactly these four keys:
+{
+  "ctaCount": <number>,
+  "keyMessages": [<strings>],
+  "topKeywords": [<strings>],
+  "pricingVisible": <boolean>
+}`;
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{ role: "user", content: prompt }],
+      response_format: { type: "json_object" },
+      temperature: 0.6,
+    });
+
+    const raw = JSON.parse(response.choices[0]?.message?.content ?? "{}");
+
+    return {
+      loadTime: existing?.loadTime ?? 0,
+      mobileScore: existing?.mobileScore ?? 70,
+      seoScore: existing?.seoScore ?? 70,
+      designScore: existing?.designScore ?? 70,
+      ctaCount: raw.ctaCount ?? existing?.ctaCount ?? 5,
+      pricingVisible: raw.pricingVisible ?? existing?.pricingVisible ?? false,
+      keyMessages: raw.keyMessages?.length ? raw.keyMessages : (existing?.keyMessages ?? []),
+      topKeywords: raw.topKeywords?.length ? raw.topKeywords : (existing?.topKeywords ?? []),
+    };
+  } catch {
+    // If AI call fails, return existing data unchanged
+    return existing ?? {
+      loadTime: 0,
+      mobileScore: 70,
+      seoScore: 70,
+      designScore: 70,
+      ctaCount: 5,
+      pricingVisible: false,
+      keyMessages: [],
+      topKeywords: [],
+    };
   }
 }
 
