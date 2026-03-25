@@ -132,14 +132,19 @@ Recent review samples: ${data.reviews.recentReviewSamples?.join(" | ") || "N/A"}
         ? `postsPerWeek=${data.social.postFrequency}`
         : "postsPerWeek=UNAVAILABLE";
 
-    const adsBlock =
-      data.ads?.activeAdsCount != null
-        ? `Ads: activeAds=${data.ads.activeAdsCount}, spend=${data.ads.estimatedSpend}, formats=${data.ads?.adFormats?.join(", ")}`
-        : `Ads: NOT AVAILABLE (${data.ads?._note || "requires authentication"})`;
+    const hasYouTubeData = data.ads?.activeAdsCount != null;
+    const adsBlock = hasYouTubeData
+      ? `YouTube Ads (REAL): recentVideoAds=${data.ads.activeAdsCount}, formats=[${data.ads?.adFormats?.join(", ")}], adFormats note: data from YouTube Data API`
+      : `YouTube Ads: NOT AVAILABLE (${data.ads?._note || "requires authentication"})`;
 
     const primaryAdMsg = data.ads?.primaryMessage
-      ? `Primary ad message (from website headline): ${data.ads.primaryMessage}`
+      ? `Primary message (from real YouTube video titles): ${data.ads.primaryMessage}`
       : "Primary ad message: N/A";
+
+    const adExamplesBlock =
+      data.ads?.adExamples?.length > 0
+        ? `Real ad video titles: ${data.ads.adExamples.join(" | ")}`
+        : "";
 
     return `
 Company: ${c.name} (${c.isUserCompany ? "USER COMPANY" : "COMPETITOR"})
@@ -154,6 +159,7 @@ Content themes: ${data.social?.contentThemes?.join(", ") || "N/A"}
 Instagram bio: ${data.social?.bio || "N/A"}
 ${adsBlock}
 ${primaryAdMsg}
+${adExamplesBlock}
 Features - battery=${data.features?.batteryScore ?? 50}, camera=${data.features?.cameraScore ?? 50}, gaming=${data.features?.gamingScore ?? 50}, durability=${data.features?.durabilityScore ?? 50}, sustainability=${data.features?.sustainabilityScore ?? 40}, ai=${data.features?.aiFeatureScore ?? 40}
 Price range: ${data.features?.priceRange || "N/A"}, Positioning: ${data.features?.marketPositioning || "N/A"}${reviewsBlock}
 `;

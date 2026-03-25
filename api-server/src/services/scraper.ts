@@ -1,5 +1,6 @@
 import { openai } from "@workspace/integrations-openai-ai-server";
-import { crawlWebsite, crawlInstagramPublic, crawlFacebookAdLibrary, type RawWebsiteData } from "./web-crawler.js";
+import { crawlWebsite, crawlInstagramPublic, type RawWebsiteData } from "./web-crawler.js";
+import { fetchYouTubeAdsData } from "./youtube-ads.js";
 import { crawlCache } from "./cache.js";
 
 interface Company {
@@ -96,13 +97,13 @@ async function scrapeCompanyRealData(company: Company): Promise<ScrapeData> {
   const cached = crawlCache.get(cacheKey);
   if (cached) return cached;
 
-  // Step 1: Crawl website in parallel with Instagram
-  const [rawWebsite, rawSocial, rawAds] = await Promise.all([
+  // Step 1: Crawl website, Instagram, and YouTube in parallel
+  const [rawWebsite, rawSocial, rawYouTube] = await Promise.all([
     crawlWebsite(company.website).catch(() => null),
     company.instagramHandle
       ? crawlInstagramPublic(company.instagramHandle).catch(() => null)
       : Promise.resolve(null),
-    crawlFacebookAdLibrary(company.name, company.facebookPage ?? undefined).catch(() => null),
+    fetchYouTubeAdsData(company.name, company.website).catch(() => null),
   ]);
 
   // Step 2: Use AI to structure the REAL crawled content
@@ -119,7 +120,7 @@ async function scrapeCompanyRealData(company: Company): Promise<ScrapeData> {
     },
     website: structuredData.website,
     social: structuredData.social,
-    ads: buildAdsFromCrawledContext(rawWebsite, rawSocial, rawAds),
+    ads: buildAdsFromYouTube(rawYouTube, rawWebsite),
     features: structuredData.features,
     reviews: {
       averageRating: null,
@@ -262,12 +263,24 @@ CRITICAL RULES:
   }
 }
 
-function buildAdsFromCrawledContext(
-  rawWebsite: RawWebsiteData | null,
-  rawSocial: any | null,
-  rawAds: any | null
+function buildAdsFromYouTube(
+  yt: import("./youtube-ads.js").YouTubeAdsData | null,
+  rawWebsite: RawWebsiteData | null
 ): ScrapeData["ads"] {
-  // Derive minimal ad context from crawled website CTAs/messaging
+  if (yt?.fetchSuccess) {
+    return {
+      activeAdsCount: yt.recentAds.length,
+      adFormats: yt.adFormats,
+      avgAdDuration: null,
+      primaryMessage: yt.primaryMessage || rawWebsite?.h1Tags[0] || "",
+      callToAction: yt.callToAction || rawWebsite?.ctaTexts[0] || "",
+      estimatedSpend: "Unavailable (YouTube API does not expose ad spend)",
+      adExamples: yt.adExamples,
+      _note: yt._note,
+    };
+  }
+
+  // Fallback: minimal data from website crawl
   const primaryMessage = rawWebsite?.h1Tags[0] ?? rawWebsite?.openGraphData?.["description"] ?? "";
   const callToAction = rawWebsite?.ctaTexts[0] ?? "";
 
@@ -279,8 +292,7 @@ function buildAdsFromCrawledContext(
     callToAction: callToAction.slice(0, 80),
     estimatedSpend: "Unavailable",
     adExamples: [],
-    _note:
-      "Facebook Ad Library requires OAuth credentials. Ad spend and active ad counts are unavailable. Primary message derived from crawled website headline.",
+    _note: yt?._note ?? "YouTube API unavailable. Minimal data from website crawl.",
   };
 }
 
