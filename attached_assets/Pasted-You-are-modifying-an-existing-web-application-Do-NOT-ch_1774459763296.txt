@@ -1,0 +1,70 @@
+You are modifying an existing web application. Do NOT change any UI design, layout, or unrelated logic. Only enhance the functionality of the existing **“AI Quick Fix”** feature.
+
+Current Issue:
+The “AI Quick Fix” generates generic outputs. It needs to become highly specific, trend-aware, and personalized to the user’s company.
+
+Task:
+Upgrade the “AI Quick Fix” feature to take structured inputs and generate trend-based, company-specific outputs.
+
+New Input Requirements (within existing UI constraints):
+
+1. **Content Type Selector (3 options):**
+
+   * Ad Captions
+   * Instagram Post Headline & Idea
+   * Website Headlines
+
+2. **Product Name** (text input)
+
+3. **Product Features** (comma-separated or bullet input)
+
+Processing Logic:
+
+1. Use existing system data:
+
+   * Competitor ads, captions, website headlines
+   * Trend analysis already computed
+   * Messaging patterns and positioning
+
+2. Based on selected content type:
+
+   * Extract relevant competitor content (ads / captions / headlines)
+   * Identify:
+     • Trending keywords
+     • Tone (premium, bold, minimal, hype, etc.)
+     • Messaging angles (AI, performance, sustainability, etc.)
+
+3. Compare:
+
+   * User product features + brand strengths
+     WITH
+   * Competitor messaging trends
+
+4. Generate outputs that:
+
+   * Align with current trends
+   * Highlight user company strengths
+   * Feel modern, catchy, and platform-specific
+   * Avoid generic phrasing
+
+Output Requirements:
+
+* Generate **5–6 high-quality results** based on selected type:
+  • Ad Captions → short, punchy, high-conversion
+  • Instagram → headline + creative idea
+  • Website Headlines → clean, impactful, brand-focused
+
+* Tone:
+
+  * Trendy, engaging, and platform-native
+  * Slightly bold / modern (not robotic)
+
+Constraints:
+
+* Do NOT modify UI layout or styling
+* Do NOT change other features
+* Do NOT introduce new pages or flows
+* Only enhance logic behind the existing “AI Quick Fix”
+
+Goal:
+Transform “AI Quick Fix” into a smart, trend-aware content generator that produces highly relevant, brand-specific marketing content using competitor insights.

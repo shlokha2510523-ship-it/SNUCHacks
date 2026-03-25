@@ -269,25 +269,91 @@ router.get("/:id/trends", async (req, res) => {
 router.post("/:id/quick-fix", async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { fixType, currentContent, targetAudience, tone } = req.body;
-    if (!fixType || !currentContent) {
-      res.status(400).json({ error: "fixType and currentContent are required" });
+    const { fixType, currentContent, tone } = req.body;
+    const productName = currentContent;
+    const productFeatures = tone;
+    if (!fixType || !productName) {
+      res.status(400).json({ error: "fixType and productName are required" });
       return;
     }
 
     const { openai } = await import("@workspace/integrations-openai-ai-server");
 
-    const systemPrompt = `You are an expert marketing copywriter for consumer electronics brands. 
-You specialize in crafting compelling, conversion-focused copy that stands out in a competitive market.
-Always return a valid JSON object with keys: improved (string), alternatives (array of 3 strings), explanation (string).`;
+    const companies = await db.select().from(companiesTable).where(eq(companiesTable.companySetId, id));
+    const userCompany = companies.find((c) => c.isUserCompany);
+    const competitors = companies.filter((c) => !c.isUserCompany);
+    const [analysis] = await db.select().from(analysisResultsTable).where(eq(analysisResultsTable.companySetId, id));
 
-    const userPrompt = `Fix type: ${fixType}
-Current content: "${currentContent}"
-${targetAudience ? `Target audience: ${targetAudience}` : ""}
-${tone ? `Desired tone: ${tone}` : ""}
+    const competitorContentByType = competitors.map((c) => {
+      const scrape = (c.scrapeData as any) ?? {};
+      if (fixType === "ad_caption") {
+        return `${c.name}: ads=[${(scrape.ads?.adExamples ?? []).join(" | ")}], primaryMsg="${scrape.ads?.primaryMessage ?? ""}", cta="${scrape.ads?.callToAction ?? ""}"`;
+      } else if (fixType === "instagram_bio") {
+        return `${c.name}: captions=[${(scrape.social?.recentCaptions ?? []).join(" | ")}], bio="${scrape.social?.bio ?? ""}", themes=[${(scrape.social?.contentThemes ?? []).join(", ")}]`;
+      } else {
+        return `${c.name}: headlines=[${(scrape.website?.keyMessages ?? []).join(" | ")}], keywords=[${(scrape.website?.topKeywords ?? []).join(", ")}]`;
+      }
+    }).join("\n");
 
-Improve this marketing copy to be more compelling, clear, and conversion-focused for a consumer electronics brand.
-Return JSON with: { "improved": "...", "alternatives": ["...", "...", "..."], "explanation": "..." }`;
+    const trends = (analysis?.trends as any) ?? {};
+    const industryTrends = (trends.industryTrends ?? [])
+      .slice(0, 5)
+      .map((t: any) => `- ${t.name}: ${t.description}`)
+      .join("\n");
+    const competitorTrends = (trends.competitorTrends ?? [])
+      .map((t: any) => `- ${t.companyName}: shift="${t.recentShift}", style="${t.contentStyle}"`)
+      .join("\n");
+    const whitespace = (trends.whitespaceOpportunities ?? []).join(", ");
+
+    const competitorInsights = ((analysis?.competitorInsights as any[]) ?? [])
+      .map((ci: any) => `- ${ci.companyName}: style="${ci.marketingStyle}", differentiator="${ci.keyDifferentiator}", trend="${ci.trend}"`)
+      .join("\n");
+
+    const contentTypeDescriptions: Record<string, string> = {
+      ad_caption: "short, punchy, high-conversion ad captions for paid ads (Facebook/Instagram/Google)",
+      instagram_bio: "Instagram post headline + a brief creative idea for the post (format: HEADLINE // Creative idea: ...)",
+      website_headline: "clean, impactful, brand-focused website hero headlines",
+    };
+    const outputDescription = contentTypeDescriptions[fixType] ?? "marketing copy";
+
+    const userCompanyName = userCompany?.name ?? "the brand";
+    const featuresText = productFeatures ? `Product features: ${productFeatures}` : "";
+
+    const systemPrompt = `You are a world-class marketing copywriter for consumer electronics brands. You write platform-native, trend-aware copy that feels modern, bold, and human — never generic or robotic. You study what competitors do and craft content that outperforms them by being more specific, more emotional, or more clever.
+Always return valid JSON with keys: improved (string), alternatives (array of exactly 4 strings), explanation (string).`;
+
+    const userPrompt = `You are crafting ${outputDescription} for the brand "${userCompanyName}" promoting their product "${productName}".
+${featuresText}
+
+--- COMPETITOR CONTENT (${fixType}) ---
+${competitorContentByType || "No competitor data available."}
+
+--- INDUSTRY TRENDS ---
+${industryTrends || "No trend data available."}
+
+--- COMPETITOR MARKETING TRENDS ---
+${competitorTrends || "No competitor trend data available."}
+
+--- COMPETITOR INSIGHTS ---
+${competitorInsights || "No insights available."}
+
+--- WHITESPACE OPPORTUNITIES ---
+${whitespace || "None identified."}
+
+Instructions:
+1. Study the competitor content above — identify their tone, keywords, and messaging angles.
+2. Identify what's trending (bold AI messaging, sustainability, performance-first, lifestyle, etc.).
+3. Generate content that beats competitors by being more specific, more emotionally resonant, or cleverly different.
+4. Align with the whitespace opportunities where possible.
+5. Highlight the product's actual features (${productFeatures || "as provided"}).
+6. Make every output feel platform-native and modern — avoid clichés like "next-level" or "game-changer".
+
+Return exactly this JSON:
+{
+  "improved": "<the single best output — the one you'd stake your reputation on>",
+  "alternatives": ["<alt 1>", "<alt 2>", "<alt 3>", "<alt 4>"],
+  "explanation": "<2-3 sentences: what trends you spotted, how you beat competitors, and why this approach wins>"
+}`;
 
     const response = await openai.chat.completions.create({
       model: "gpt-5.2",
@@ -303,8 +369,8 @@ Return JSON with: { "improved": "...", "alternatives": ["...", "...", "..."], "e
     const parsed = JSON.parse(content);
 
     res.json({
-      original: currentContent,
-      improved: parsed.improved ?? currentContent,
+      original: productName,
+      improved: parsed.improved ?? "",
       alternatives: parsed.alternatives ?? [],
       explanation: parsed.explanation ?? "",
     });

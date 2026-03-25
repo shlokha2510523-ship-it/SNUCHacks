@@ -13,20 +13,21 @@ interface QuickFixPanelProps {
 export function QuickFixPanel({ companySetId }: QuickFixPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [fixType, setFixType] = useState<QuickFixRequestFixType>("ad_caption");
-  const [content, setContent] = useState("");
+  const [productName, setProductName] = useState("");
+  const [productFeatures, setProductFeatures] = useState("");
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
   
   const { toast } = useToast();
   const { mutate, isPending, data } = useApplyQuickFix();
 
   const handleFix = () => {
-    if (!content.trim()) return;
+    if (!productName.trim()) return;
     mutate({
       id: companySetId,
       data: {
         fixType,
-        currentContent: content,
-        tone: "professional, engaging",
+        currentContent: productName,
+        tone: productFeatures,
       }
     });
   };
@@ -82,32 +83,42 @@ export function QuickFixPanel({ companySetId }: QuickFixPanelProps) {
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">What needs fixing?</label>
+                  <label className="text-sm font-medium text-muted-foreground">Content Type</label>
                   <select 
                     value={fixType}
                     onChange={(e) => setFixType(e.target.value as QuickFixRequestFixType)}
                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all appearance-none"
                   >
-                    <option value="ad_caption">Ad Caption</option>
-                    <option value="instagram_bio">Instagram Bio</option>
-                    <option value="website_headline">Website Headline</option>
-                    <option value="ad_cta">Call to Action (CTA)</option>
+                    <option value="ad_caption">Ad Captions</option>
+                    <option value="instagram_bio">Instagram Post Headline & Idea</option>
+                    <option value="website_headline">Website Headlines</option>
                   </select>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground">Paste your current content</label>
+                  <label className="text-sm font-medium text-muted-foreground">Product Name</label>
+                  <input
+                    type="text"
+                    value={productName}
+                    onChange={(e) => setProductName(e.target.value)}
+                    placeholder="E.g., ProMax X5"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground">Product Features</label>
                   <textarea 
-                    value={content}
-                    onChange={(e) => setContent(e.target.value)}
-                    placeholder="E.g., Buy our new phone. It has a good battery."
-                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all min-h-[120px] resize-none"
+                    value={productFeatures}
+                    onChange={(e) => setProductFeatures(e.target.value)}
+                    placeholder="E.g., 6000mAh battery, 200MP camera, titanium frame, AI photo editing"
+                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all min-h-[100px] resize-none"
                   />
                 </div>
 
                 <button
                   onClick={handleFix}
-                  disabled={!content.trim() || isPending}
+                  disabled={!productName.trim() || isPending}
                   className="w-full py-4 rounded-xl font-bold bg-gradient-to-r from-primary to-secondary text-white shadow-lg disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 transition-opacity flex items-center justify-center gap-2"
                 >
                   {isPending ? (
