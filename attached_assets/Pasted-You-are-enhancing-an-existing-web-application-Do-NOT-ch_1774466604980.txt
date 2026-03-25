@@ -1,0 +1,97 @@
+You are enhancing an existing web application. Do NOT change UI, layout, or core features. Only modify the data layer to replace mock/generated data with real crawled data.
+
+Objective:
+Replace all GPT-generated mock competitor data with **real-time data collected via crawling**, while retaining AI for analysis and insight generation.
+
+---
+
+Task 1: Replace Mock Data with Crawled Data
+
+* Remove any logic that generates fake/sample competitor data.
+
+* Integrate **Cloudflare Crawling (or equivalent crawler)** to fetch real data from:
+  • Official company websites (landing pages, product pages)
+  • Pricing pages
+  • Feature descriptions
+  • Marketing copy
+
+* Ensure crawling is:
+  • Structured
+  • Reliable
+  • Respectful of rate limits
+
+---
+
+Task 2: Data Sources Expansion
+
+In addition to website crawling, integrate:
+
+* Social Media (via Xpoz.ai / existing integration)
+* Facebook Ad Library (ads + campaigns)
+* Google Reviews (already integrated)
+
+Ensure all sources feed into a unified pipeline.
+
+---
+
+Task 3: Data Extraction & Structuring
+
+From crawled content, extract:
+
+* Product features (industry-specific)
+* Messaging (headlines, taglines, positioning)
+* Pricing & offers
+* Keywords and tone
+
+Normalize the data into structured formats before analysis.
+
+---
+
+Task 4: AI Role Adjustment (IMPORTANT)
+
+* Use AI ONLY for:
+  • Cleaning and structuring extracted data
+  • Identifying patterns and trends
+  • Generating insights (failure reasons, gaps, recommendations)
+
+* Do NOT use AI to fabricate or assume missing data.
+
+---
+
+Task 5: Pipeline Integration
+
+Maintain existing architecture:
+
+Crawled Data → Processing → Normalization → AI Analysis → Dashboard Output
+
+Ensure:
+
+* All existing features work with real data:
+  • Rankings
+  • Trend detection
+  • “Next Hit Products”
+  • “Whitespaces”
+  • “AI Quick Fix”
+
+---
+
+Task 6: Performance Handling
+
+* Implement:
+  • Caching (to avoid repeated crawling)
+  • Fallback handling (if crawl fails)
+  • Partial rendering if some data is unavailable
+
+---
+
+Constraints:
+
+* Do NOT modify UI or design
+* Do NOT change user flow
+* Do NOT remove existing features
+* Only replace mock data layer with real crawling-based data
+
+---
+
+Goal:
+Transform the application from a simulated intelligence system into a real-world competitive intelligence engine powered by live crawled data.

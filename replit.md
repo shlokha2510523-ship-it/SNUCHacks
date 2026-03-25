@@ -47,10 +47,28 @@ workspace/
 └── package.json            
 ```
 
+## Data Pipeline (Real Crawling)
+
+The `POST /api/companies/:id/scrape` endpoint now uses a **real web crawling pipeline**:
+
+1. **Website crawl** (`api-server/src/services/web-crawler.ts`): Uses native `fetch` + `cheerio` to:
+   - Measure real load times
+   - Extract real H1/H2/H3 headings (key messages)
+   - Compute word frequency for top keywords
+   - Count CTAs, detect pricing pages, extract price mentions
+   - Derive SEO/mobile/design scores from meta tags and structure
+   - Extract feature keyword mentions (battery, camera, AI, gaming, etc.)
+2. **Instagram public OG**: Attempts to fetch OG meta from Instagram public pages (bio/title where available)
+3. **AI structuring only** (`scraper.ts`): AI is called with the real crawled HTML content to structure it into the schema — AI cannot add anything not in the real content
+4. **Facebook Ads / Google Reviews**: Marked as unavailable (require auth credentials). `_note` fields explain the limitation
+5. **Caching**: 24-hour in-memory cache per website URL (`api-server/src/services/cache.ts`)
+
+**Data sources**: `_meta.dataSource` on each `scrapeData` record — `"crawled"` | `"partial"` | `"unavailable"`
+
 ## Key Features
 
 - **Company Setup**: Enter your electronics brand + 1-4 competitors
-- **AI Scraping Simulation**: Website UX, social media metrics, ad analysis, product feature scores
+- **Real Web Crawling**: Actual HTTP crawling of company websites using cheerio — real load times, real headings, real keywords, real CTAs, real pricing
 - **Competitive Analysis**: AI-powered ranking across 10 metrics (Battery, Camera, Gaming, Durability, Sustainability, AI Features, Social, Ads, Website UX, Pricing)
 - **Spotify Wrapped UI**: Cinematic rank reveals, animated metric bars, full-screen section cards
 - **Reasons for Failure**: AI-consolidated failure analysis with severity levels
