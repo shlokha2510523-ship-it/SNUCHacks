@@ -18,6 +18,7 @@ import { StrategicPositioning } from "@/components/StrategicPositioning";
 import { NextHitProducts } from "@/components/NextHitProducts";
 import { WhitespacesSection } from "@/components/WhitespacesSection";
 import { SentimentTimeline } from "@/components/SentimentTimeline";
+import { PositioningAnalysis } from "@/components/PositioningAnalysis";
 
 export default function Report() {
   const [, params] = useRoute("/report/:id");
@@ -233,6 +234,10 @@ export default function Report() {
       />
 
       {/* WHITESPACES YOU CAN FOCUS ON */}
+      <div className="border-t border-border/50">
+        <PositioningAnalysis companySetId={id} />
+      </div>
+
       <WhitespacesSection trends={trends} />
 
       {/* STRATEGIC POSITIONING */}

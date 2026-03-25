@@ -1,0 +1,110 @@
+You are enhancing an existing web application. Do NOT change any UI design, layout, or existing functionality except for adding a new analytical feature as described below.
+
+Task:
+Implement a new feature to detect and display **“Overused Positioning Angles”** based on competitor messaging data.
+
+---
+
+Objective:
+Analyze competitor marketing content and identify which positioning angles are overused, balanced, or underutilized (whitespace opportunities).
+
+---
+
+Data Sources (use existing pipeline ONLY):
+
+* Website headlines
+* Advertisement data (Facebook Ad Library, YouTube)
+* Social media captions
+
+Do NOT fetch new external data.
+
+---
+
+Step 1: Define Positioning Angles
+
+Create a keyword-based mapping system for angles such as:
+
+* AI / Smart Features
+* Battery / Efficiency
+* Camera / Imaging
+* Performance / Speed
+* Gaming
+* Premium / Design
+* Budget / Value
+* Sustainability
+
+Allow extensibility for industry-specific angles (e.g., automobile).
+
+---
+
+Step 2: Classify Messaging
+
+For each piece of collected text:
+
+* Detect which positioning angle(s) it belongs to using keyword matching or lightweight NLP.
+* A single text can map to multiple angles.
+
+---
+
+Step 3: Frequency Calculation
+
+* Count how many competitors use each positioning angle.
+* Normalize usage based on total number of competitors:
+  usage_ratio = competitors_using_angle / total_competitors
+
+---
+
+Step 4: Categorization Logic
+
+Classify angles into:
+
+* **Overused** → usage_ratio ≥ 0.6
+* **Balanced** → 0.3 ≤ usage_ratio < 0.6
+* **Whitespace (Underused)** → usage_ratio < 0.3
+
+---
+
+Step 5: Insight Generation
+
+For each category:
+
+* Generate concise, human-readable insights such as:
+  • “AI-focused messaging is heavily saturated across competitors.”
+  • “Sustainability is underutilized and presents an opportunity.”
+
+Use AI ONLY to summarize insights, not to fabricate data.
+
+---
+
+Step 6: UI Integration
+
+* Add a new section titled **“Positioning Analysis”**
+* Place it logically near:
+  • “Whitespaces You Can Focus On” OR
+  • Other insight sections
+
+Display:
+
+1. 🔴 Overused Angles
+2. 🟡 Balanced Angles
+3. 🟢 Whitespaces
+
+Each item should include:
+
+* Angle name
+* Usage indicator (e.g., “4/5 competitors”)
+* Short insight
+
+---
+
+Constraints:
+
+* Do NOT modify existing sections or styling
+* Do NOT change layout or navigation
+* Do NOT affect performance of other features
+* Use only existing collected data
+
+---
+
+Goal:
+Add a structured positioning intelligence layer that identifies messaging saturation and highlights differentiation opportunities without altering the current application design.

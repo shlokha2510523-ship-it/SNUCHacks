@@ -10,6 +10,7 @@ import { z } from "zod";
 import { analyzeCompetitiveData } from "../services/ai-analysis.js";
 import { scrapeAllCompanies } from "../services/scraper.js";
 import { generateTimeline } from "../services/timeline-service.js";
+import { analyzePositioning } from "../services/positioning-analysis-service.js";
 
 const router: IRouter = Router();
 
@@ -264,6 +265,42 @@ router.get("/:id/trends", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to get trends");
     res.status(500).json({ error: "Failed to get trends" });
+  }
+});
+
+router.get("/:id/positioning-analysis", async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    const [set] = await db.select().from(companySetsTable).where(eq(companySetsTable.id, id));
+    if (!set) { res.status(404).json({ error: "Not found" }); return; }
+    if (set.status !== "complete") { res.status(400).json({ error: "Analysis not complete yet." }); return; }
+
+    const [analysis] = await db.select().from(analysisResultsTable).where(eq(analysisResultsTable.companySetId, id));
+    if (!analysis) { res.status(404).json({ error: "Analysis not found." }); return; }
+
+    if (analysis.positioningAnalysis) {
+      res.json(analysis.positioningAnalysis);
+      return;
+    }
+
+    const companies = await db.select().from(companiesTable).where(eq(companiesTable.companySetId, id));
+    const companyInputs = companies.map((c) => ({
+      id: c.id,
+      name: c.name,
+      isUserCompany: c.isUserCompany,
+      scrapeData: c.scrapeData,
+    }));
+
+    const positioningData = await analyzePositioning(companyInputs);
+
+    await db.update(analysisResultsTable)
+      .set({ positioningAnalysis: positioningData as any })
+      .where(eq(analysisResultsTable.companySetId, id));
+
+    res.json(positioningData);
+  } catch (err) {
+    req.log.error({ err }, "Failed to generate positioning analysis");
+    res.status(500).json({ error: "Failed to generate positioning analysis" });
   }
 });
 
