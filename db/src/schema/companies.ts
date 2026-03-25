@@ -36,6 +36,7 @@ export const analysisResultsTable = pgTable("analysis_results", {
   rankings: jsonb("rankings"),
   actionPlan: jsonb("action_plan"),
   trends: jsonb("trends"),
+  timeline: jsonb("timeline"),
   generatedAt: timestamp("generated_at").notNull().defaultNow(),
 });
 

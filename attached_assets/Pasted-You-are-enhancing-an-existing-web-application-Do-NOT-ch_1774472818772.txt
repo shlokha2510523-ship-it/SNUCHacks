@@ -1,0 +1,98 @@
+You are enhancing an existing web application. Do NOT change UI design, layout, or any existing features. Only add a new **timeline analysis feature** using Trustpilot data and existing data sources.
+
+Objective:
+Integrate Trustpilot reviews to create a **time-based insight system** that tracks sentiment and correlates it with pricing and marketing changes for both the user company and its competitors.
+
+---
+
+Task 1: Trustpilot Data Integration
+
+* Automatically fetch Trustpilot reviews for:
+  • User company
+  • Competitor companies
+
+* Extract for each review:
+  • Date / timestamp
+  • Rating (1–5)
+  • Review text
+
+* Process and structure data into a time-series format.
+
+---
+
+Task 2: Sentiment & Signal Extraction
+
+From review text:
+
+* Detect:
+  • Positive sentiment
+  • Negative sentiment
+  • Neutral sentiment
+
+* Identify key mentions:
+  • Pricing complaints
+  • Discounts / value perception
+  • Product satisfaction
+
+* Aggregate data into:
+  • Daily or weekly sentiment scores
+  • Keyword frequency over time
+
+---
+
+Task 3: Timeline Construction
+
+Create a unified timeline for:
+
+1. **User Company**
+2. **Competitor Companies**
+
+Each timeline should include:
+
+* 📅 Review sentiment trend (Trustpilot)
+* 💰 Price change signals (from crawled website data)
+* 📢 Ad activity (YouTube API / existing ad data)
+
+---
+
+Task 4: Correlation Logic
+
+Analyze relationships between:
+
+* Price changes ↔ review sentiment shifts
+* Ad campaigns ↔ sentiment spikes
+* Feature updates ↔ customer feedback
+
+Generate insights such as:
+
+* “Price increase in March led to negative sentiment spike”
+* “Ad campaign launch improved positive reviews”
+
+---
+
+Task 5: Output Integration
+
+Add this as a new section (timeline view) in the dashboard:
+
+* Show:
+  • Time-series chart (sentiment + price + ads)
+  • Key event markers
+  • Highlighted insights
+
+* Ensure:
+  • Clean visualization
+  • Consistent styling with existing UI
+
+---
+
+Task 6: Constraints
+
+* Do NOT modify existing sections
+* Do NOT change UI layout or design system
+* Do NOT require any additional user input
+* Keep everything automated
+
+---
+
+Goal:
+Enhance the platform with a time-based intelligence layer that connects customer sentiment (Trustpilot), pricing changes, and marketing activity into a unified, actionable timeline for both the user company and competitors.

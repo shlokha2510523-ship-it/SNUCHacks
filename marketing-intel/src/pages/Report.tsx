@@ -17,6 +17,7 @@ import { getSeverityColor, getEffortColor } from "@/lib/utils";
 import { StrategicPositioning } from "@/components/StrategicPositioning";
 import { NextHitProducts } from "@/components/NextHitProducts";
 import { WhitespacesSection } from "@/components/WhitespacesSection";
+import { SentimentTimeline } from "@/components/SentimentTimeline";
 
 export default function Report() {
   const [, params] = useRoute("/report/:id");
@@ -366,6 +367,11 @@ export default function Report() {
           </div>
         </div>
       </section>
+
+      {/* SENTIMENT INTELLIGENCE TIMELINE */}
+      <div className="border-t border-border/50">
+        <SentimentTimeline companySetId={id} />
+      </div>
       
     </div>
   );
