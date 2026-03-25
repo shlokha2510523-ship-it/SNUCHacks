@@ -14,6 +14,7 @@ import { MetricBar } from "@/components/MetricBar";
 import { QuickFixPanel } from "@/components/QuickFixPanel";
 import { Trophy, Target, TrendingUp, AlertTriangle, Lightbulb, Activity, ChevronDown } from "lucide-react";
 import { getSeverityColor, getEffortColor } from "@/lib/utils";
+import { StrategicPositioning } from "@/components/StrategicPositioning";
 
 export default function Report() {
   const [, params] = useRoute("/report/:id");
@@ -219,6 +220,9 @@ export default function Report() {
           </div>
         </div>
       </section>
+
+      {/* STRATEGIC POSITIONING */}
+      <StrategicPositioning rankings={rankings} />
 
       {/* AI ANALYSIS: REASONS FOR FAILURE */}
       <section className="py-32 px-6">

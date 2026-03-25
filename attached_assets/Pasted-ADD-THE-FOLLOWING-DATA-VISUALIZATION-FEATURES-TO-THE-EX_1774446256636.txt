@@ -1,0 +1,171 @@
+ADD THE FOLLOWING DATA VISUALIZATION FEATURES TO THE EXISTING WEB APPLICATION DASHBOARD:
+
+GOAL:
+Implement two interactive strategic positioning graphs that visually show how the user’s brand compares to competitors. The graphs should look like professional business intelligence dashboards and must be responsive for different screen sizes.
+
+Use modern web charting libraries and smooth animations.
+
+---
+
+## GRAPH 1 — PRICE vs PERFORMANCE POSITIONING MAP
+
+PURPOSE:
+Visualize how brands position their products based on pricing and performance strength.
+
+GRAPH TYPE:
+Interactive 2D Scatter Plot
+
+AXES:
+• X-Axis → Product Price Level (Budget → Mid-Range → Premium)
+• Y-Axis → Product Performance Level (Basic → Balanced → High Performance)
+
+DATA SOURCE:
+• Pricing Score (normalized 0–100)
+• Feature/Performance Score (normalized 0–100)
+
+DATA POINTS:
+• Plot the user’s brand + 3 competitors
+• Each brand shown as a circular node
+• Use brand name labels beside nodes
+• Highlight user’s brand with:
+
+* Larger node size
+* Distinct accent color
+* Glow ring effect
+
+INTERACTIVITY:
+• Hover tooltip must display:
+
+* Brand Name
+* Price Score
+* Performance Score
+* Top strength indicator
+  • Smooth fade-in animation when graph loads
+  • Nodes gently scale on hover
+
+VISUAL STYLE:
+• Dark-themed chart background
+• Subtle gridlines
+• Soft gradient node colors
+• Clean sans-serif fonts
+• Axis labels:
+
+* “More Affordable” → “More Premium”
+* “Lower Performance” → “Higher Performance”
+
+TITLE:
+“Price vs Performance Positioning”
+
+---
+
+## GRAPH 2 — PREMIUM vs BUDGET MARKET POSITIONING MAP
+
+PURPOSE:
+Show strategic brand positioning based on affordability and marketing visibility.
+
+GRAPH TYPE:
+2D Quadrant Scatter Plot
+
+AXES:
+• X-Axis → Budget ←→ Premium (Pricing Competitiveness Score)
+• Y-Axis → Low Visibility ←→ High Visibility (Marketing Visibility Score)
+
+QUADRANT LABELS:
+Top-Left:
+“Mass Market Leaders”
+
+Top-Right:
+“Premium Dominators”
+
+Bottom-Left:
+“Underdog Value Brands”
+
+Bottom-Right:
+“Niche Premium Players”
+
+DATA POINTS:
+• Plot user brand + competitors
+• Brand initials or logos inside nodes
+• User brand highlighted with distinct color and larger node
+
+INTERACTIVITY:
+• Hover tooltip shows:
+
+* Brand name
+* Market positioning summary
+  • Animated node entry when graph loads
+  • Subtle quadrant shading for readability
+
+VISUAL STYLE:
+• Elegant dark analytics theme
+• Soft quadrant background tint
+• Thin axis lines
+• Minimal legend
+• Professional BI dashboard aesthetics
+
+TITLE:
+“Market Positioning Map”
+
+---
+
+## DATA NORMALIZATION LOGIC
+
+Use existing computed metrics:
+
+• Pricing Score → X-axis for both graphs
+• Feature/Performance Score → Y-axis for Graph 1
+• Marketing Visibility Score → Y-axis for Graph 2
+
+Normalize all scores between 0–100 before plotting.
+
+---
+
+## DASHBOARD PLACEMENT
+
+Create a new dashboard section titled:
+“Strategic Positioning”
+
+Layout:
+• Responsive grid container
+• Graph 1 displayed on top
+• Graph 2 displayed below
+• Each graph inside a rounded card with soft shadow
+• Adequate padding and spacing
+
+---
+
+## TECH IMPLEMENTATION
+
+Frontend Framework:
+Use existing web stack (React / Next.js preferred)
+
+Recommended Chart Libraries:
+• Recharts
+• Chart.js
+• ECharts
+• D3.js (if advanced visuals desired)
+
+Charts must support:
+• Hover tooltips
+• Responsive resizing
+• Smooth animations
+• Custom node styling
+
+---
+
+## DESIGN PRIORITY
+
+Focus on:
+• Executive-level dashboard visuals
+• Clean spacing
+• Readable axis labels
+• Smooth animations
+• High contrast for readability
+
+Avoid:
+• Overlapping labels
+• Bright neon palettes
+• Cluttered legends
+• Excessive controls
+
+The graphs should resemble premium competitive intelligence dashboards used by strategy teams.
