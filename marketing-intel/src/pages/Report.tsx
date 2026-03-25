@@ -15,6 +15,7 @@ import { QuickFixPanel } from "@/components/QuickFixPanel";
 import { Trophy, Target, TrendingUp, AlertTriangle, Lightbulb, Activity, ChevronDown } from "lucide-react";
 import { getSeverityColor, getEffortColor } from "@/lib/utils";
 import { StrategicPositioning } from "@/components/StrategicPositioning";
+import { NextHitProducts } from "@/components/NextHitProducts";
 
 export default function Report() {
   const [, params] = useRoute("/report/:id");
@@ -220,6 +221,14 @@ export default function Report() {
           </div>
         </div>
       </section>
+
+      {/* NEXT HIT PRODUCTS */}
+      <NextHitProducts
+        rankings={rankings}
+        trends={trends}
+        analysis={analysis}
+        companyName={companySet.userCompany.name}
+      />
 
       {/* STRATEGIC POSITIONING */}
       <StrategicPositioning rankings={rankings} />
