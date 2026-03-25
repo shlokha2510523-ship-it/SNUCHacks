@@ -1,0 +1,728 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: Marketing Intelligence Platform API
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: companies
+    description: Company management
+  - name: analysis
+    description: Analysis and intelligence
+  - name: actions
+    description: One-button fix actions
+
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /companies/auto-discover:
+    post:
+      operationId: autoDiscoverCompanies
+      tags: [companies]
+      summary: Auto-discover competitors for a company name - only input required is the company name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AutoDiscoverRequest"
+      responses:
+        "200":
+          description: Company set created with auto-discovered competitors
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AutoDiscoverResponse"
+        "400":
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /companies:
+    get:
+      operationId: listCompanies
+      tags: [companies]
+      summary: List all company sets
+      responses:
+        "200":
+          description: List of company sets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CompanySet"
+    post:
+      operationId: createCompanySet
+      tags: [companies]
+      summary: Create a new company comparison set
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateCompanySetRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanySet"
+
+  /companies/{id}:
+    get:
+      operationId: getCompanySet
+      tags: [companies]
+      summary: Get a company set with full data
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Company set with analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompanySetDetail"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /companies/{id}/analyze:
+    post:
+      operationId: analyzeCompanies
+      tags: [analysis]
+      summary: Trigger full analysis of all companies in the set
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Analysis started or results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalysisResult"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /companies/{id}/scrape:
+    post:
+      operationId: scrapeCompanyData
+      tags: [analysis]
+      summary: Scrape website and social data for all companies in the set
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Scrape results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScrapeResult"
+
+  /companies/{id}/rankings:
+    get:
+      operationId: getCompanyRankings
+      tags: [analysis]
+      summary: Get rankings across all metrics
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Rankings data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RankingsData"
+
+  /companies/{id}/action-plan:
+    get:
+      operationId: getActionPlan
+      tags: [analysis]
+      summary: Get the AI-generated action plan for the user company
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Action plan
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionPlan"
+
+  /companies/{id}/quick-fix:
+    post:
+      operationId: applyQuickFix
+      tags: [actions]
+      summary: Generate AI-improved version of ad caption or social bio
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuickFixRequest"
+      responses:
+        "200":
+          description: Quick fix result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuickFixResult"
+
+  /companies/{id}/trends:
+    get:
+      operationId: getMarketingTrends
+      tags: [analysis]
+      summary: Get marketing trend analysis
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Trend data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TrendsData"
+
+components:
+  schemas:
+    AutoDiscoverRequest:
+      type: object
+      properties:
+        companyName:
+          type: string
+          minLength: 1
+      required: [companyName]
+
+    AutoDiscoverResponse:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        status:
+          type: string
+        industry:
+          type: string
+        marketSegment:
+          type: string
+        userCompany:
+          $ref: "#/components/schemas/Company"
+        competitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Company"
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, status, industry, marketSegment, userCompany, competitors, createdAt, updatedAt]
+
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required: [status]
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required: [error]
+
+    CompanySet:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        userCompany:
+          $ref: "#/components/schemas/Company"
+        competitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/Company"
+        status:
+          type: string
+          enum: [pending, scraping, analyzing, complete, error]
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, userCompany, competitors, status, createdAt, updatedAt]
+
+    CompanySetDetail:
+      allOf:
+        - $ref: "#/components/schemas/CompanySet"
+        - type: object
+          properties:
+            analysis:
+              $ref: "#/components/schemas/AnalysisResult"
+            rankings:
+              $ref: "#/components/schemas/RankingsData"
+
+    Company:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        website:
+          type: string
+        instagramHandle:
+          type: string
+        facebookPage:
+          type: string
+        isUserCompany:
+          type: boolean
+      required: [id, name, website, isUserCompany]
+
+    CreateCompanySetRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        userCompany:
+          $ref: "#/components/schemas/CompanyInput"
+        competitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyInput"
+          minItems: 1
+          maxItems: 4
+      required: [name, userCompany, competitors]
+
+    CompanyInput:
+      type: object
+      properties:
+        name:
+          type: string
+        website:
+          type: string
+        instagramHandle:
+          type: string
+        facebookPage:
+          type: string
+      required: [name, website]
+
+    ScrapeResult:
+      type: object
+      properties:
+        companiesProcessed:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompanyScrapeData"
+      required: [companiesProcessed, results]
+
+    CompanyScrapeData:
+      type: object
+      properties:
+        companyId:
+          type: integer
+        companyName:
+          type: string
+        website:
+          $ref: "#/components/schemas/WebsiteData"
+        social:
+          $ref: "#/components/schemas/SocialData"
+        ads:
+          $ref: "#/components/schemas/AdsData"
+        features:
+          $ref: "#/components/schemas/ProductFeatureData"
+      required: [companyId, companyName]
+
+    WebsiteData:
+      type: object
+      properties:
+        loadTime:
+          type: number
+        mobileScore:
+          type: number
+        seoScore:
+          type: number
+        designScore:
+          type: number
+        ctaCount:
+          type: integer
+        pricingVisible:
+          type: boolean
+        keyMessages:
+          type: array
+          items:
+            type: string
+        topKeywords:
+          type: array
+          items:
+            type: string
+
+    SocialData:
+      type: object
+      properties:
+        instagramFollowers:
+          type: integer
+        instagramEngagementRate:
+          type: number
+        postFrequency:
+          type: number
+        avgLikes:
+          type: integer
+        avgComments:
+          type: integer
+        contentThemes:
+          type: array
+          items:
+            type: string
+        bio:
+          type: string
+        recentCaptions:
+          type: array
+          items:
+            type: string
+
+    AdsData:
+      type: object
+      properties:
+        activeAdsCount:
+          type: integer
+        adFormats:
+          type: array
+          items:
+            type: string
+        avgAdDuration:
+          type: integer
+        primaryMessage:
+          type: string
+        callToAction:
+          type: string
+        estimatedSpend:
+          type: string
+        adExamples:
+          type: array
+          items:
+            type: string
+
+    ProductFeatureData:
+      type: object
+      properties:
+        batteryScore:
+          type: number
+        cameraScore:
+          type: number
+        gamingScore:
+          type: number
+        durabilityScore:
+          type: number
+        sustainabilityScore:
+          type: number
+        aiFeatureScore:
+          type: number
+        priceRange:
+          type: string
+        discounts:
+          type: string
+        marketPositioning:
+          type: string
+
+    AnalysisResult:
+      type: object
+      properties:
+        companySetId:
+          type: integer
+        overallScore:
+          type: number
+        rank:
+          type: integer
+        totalCompanies:
+          type: integer
+        reasonsForFailure:
+          type: array
+          items:
+            $ref: "#/components/schemas/FailureReason"
+        missedOpportunities:
+          type: array
+          items:
+            $ref: "#/components/schemas/MissedOpportunity"
+        competitorInsights:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorInsight"
+        generatedAt:
+          type: string
+          format: date-time
+      required: [companySetId, overallScore, rank, totalCompanies, reasonsForFailure, missedOpportunities, competitorInsights, generatedAt]
+
+    FailureReason:
+      type: object
+      properties:
+        category:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        severity:
+          type: string
+          enum: [critical, high, medium, low]
+        impactScore:
+          type: number
+      required: [category, title, description, severity, impactScore]
+
+    MissedOpportunity:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        potentialImpact:
+          type: string
+        effort:
+          type: string
+          enum: [low, medium, high]
+        category:
+          type: string
+      required: [title, description, potentialImpact, effort, category]
+
+    CompetitorInsight:
+      type: object
+      properties:
+        companyName:
+          type: string
+        strength:
+          type: string
+        trend:
+          type: string
+        marketingStyle:
+          type: string
+        keyDifferentiator:
+          type: string
+      required: [companyName, strength, trend, marketingStyle, keyDifferentiator]
+
+    RankingsData:
+      type: object
+      properties:
+        companySetId:
+          type: integer
+        overall:
+          type: array
+          items:
+            $ref: "#/components/schemas/RankEntry"
+        byMetric:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              $ref: "#/components/schemas/RankEntry"
+        userCompanyHighlights:
+          $ref: "#/components/schemas/UserCompanyHighlights"
+      required: [companySetId, overall, byMetric, userCompanyHighlights]
+
+    RankEntry:
+      type: object
+      properties:
+        companyId:
+          type: integer
+        companyName:
+          type: string
+        score:
+          type: number
+        rank:
+          type: integer
+        isUserCompany:
+          type: boolean
+      required: [companyId, companyName, score, rank, isUserCompany]
+
+    UserCompanyHighlights:
+      type: object
+      properties:
+        leadingIn:
+          type: array
+          items:
+            type: string
+        laggingIn:
+          type: array
+          items:
+            type: string
+        biggestGap:
+          type: string
+        biggestAdvantage:
+          type: string
+      required: [leadingIn, laggingIn, biggestGap, biggestAdvantage]
+
+    ActionPlan:
+      type: object
+      properties:
+        companySetId:
+          type: integer
+        immediateActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionItem"
+        shortTermActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionItem"
+        longTermActions:
+          type: array
+          items:
+            $ref: "#/components/schemas/ActionItem"
+        marketingGapSummary:
+          type: string
+        competitivePriority:
+          type: string
+      required: [companySetId, immediateActions, shortTermActions, longTermActions, marketingGapSummary, competitivePriority]
+
+    ActionItem:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+        expectedImpact:
+          type: string
+        timeframe:
+          type: string
+      required: [title, description, category, expectedImpact, timeframe]
+
+    TrendsData:
+      type: object
+      properties:
+        companySetId:
+          type: integer
+        industryTrends:
+          type: array
+          items:
+            $ref: "#/components/schemas/TrendItem"
+        competitorTrends:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorTrend"
+        whitespaceOpportunities:
+          type: array
+          items:
+            type: string
+      required: [companySetId, industryTrends, competitorTrends, whitespaceOpportunities]
+
+    TrendItem:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        adoption:
+          type: string
+          enum: [low, medium, high]
+        relevance:
+          type: number
+      required: [name, description, adoption, relevance]
+
+    CompetitorTrend:
+      type: object
+      properties:
+        companyName:
+          type: string
+        recentShift:
+          type: string
+        targetAudience:
+          type: string
+        contentStyle:
+          type: string
+      required: [companyName, recentShift, targetAudience, contentStyle]
+
+    QuickFixRequest:
+      type: object
+      properties:
+        fixType:
+          type: string
+          enum: [ad_caption, instagram_bio, website_headline, ad_cta]
+        currentContent:
+          type: string
+        targetAudience:
+          type: string
+        tone:
+          type: string
+      required: [fixType, currentContent]
+
+    QuickFixResult:
+      type: object
+      properties:
+        original:
+          type: string
+        improved:
+          type: string
+        alternatives:
+          type: array
+          items:
+            type: string
+        explanation:
+          type: string
+      required: [original, improved, alternatives, explanation]
