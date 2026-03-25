@@ -18,6 +18,8 @@ interface BrandPoint {
   x: number;
   y: number;
   initials: string;
+  labelDx: number;
+  labelDy: number;
 }
 
 function avg(scores: number[]): number {
@@ -33,33 +35,58 @@ function getInitials(name: string): string {
     .join("");
 }
 
+function computeDomain(values: number[], pad = 20): [number, number] {
+  if (!values.length) return [0, 100];
+  const mn = Math.min(...values);
+  const mx = Math.max(...values);
+  const range = mx - mn;
+  const p = range < 20 ? pad + 10 : pad;
+  return [Math.max(0, Math.floor(mn - p)), Math.min(100, Math.ceil(mx + p))];
+}
+
+function attachLabelOffsets(points: { x: number; y: number; name: string; isUser: boolean; initials: string }[]): BrandPoint[] {
+  if (!points.length) return [];
+  const cx = points.reduce((s, p) => s + p.x, 0) / points.length;
+  const cy = points.reduce((s, p) => s + p.y, 0) / points.length;
+
+  return points.map((p) => {
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 1) {
+      return { ...p, labelDx: 0, labelDy: -1 };
+    }
+    return { ...p, labelDx: dx / len, labelDy: dy / len };
+  });
+}
+
 const COMPETITOR_COLORS = ["#818cf8", "#f472b6", "#34d399", "#fb923c", "#a78bfa"];
 const USER_COLOR = "#06b6d4";
-const GRID_COLOR = "rgba(255,255,255,0.06)";
-const AXIS_COLOR = "rgba(255,255,255,0.2)";
+const GRID_COLOR = "rgba(255,255,255,0.05)";
+const AXIS_COLOR = "rgba(255,255,255,0.18)";
 
-function buildPoints(rankings: RankingsData, yMetrics: string[]): BrandPoint[] {
+function buildRawPoints(
+  rankings: RankingsData,
+  yMetrics: string[]
+): { x: number; y: number; name: string; isUser: boolean; initials: string }[] {
   const byMetric = rankings.byMetric;
-  const pricingKey = Object.keys(byMetric).find((k) =>
-    k.toLowerCase().includes("pric")
-  ) ?? "";
-  const yKeys = yMetrics.map(
-    (m) => Object.keys(byMetric).find((k) => k.toLowerCase().includes(m.toLowerCase())) ?? ""
-  ).filter(Boolean);
+  const pricingKey =
+    Object.keys(byMetric).find((k) => k.toLowerCase().includes("pric")) ?? "";
+  const yKeys = yMetrics
+    .map((m) => Object.keys(byMetric).find((k) => k.toLowerCase().includes(m.toLowerCase())) ?? "")
+    .filter(Boolean);
 
-  const companies = rankings.overall.map((e) => e.companyName);
-
-  return companies.map((name) => {
-    const isUser = rankings.overall.find((e) => e.companyName === name)?.isUserCompany ?? false;
-    const pricingEntry = byMetric[pricingKey]?.find((e) => e.companyName === name);
-    const xScore = pricingEntry?.score ?? 50;
-
-    const yScores = yKeys.map(
-      (k) => byMetric[k]?.find((e) => e.companyName === name)?.score ?? 50
-    );
-    const yScore = avg(yScores);
-
-    return { name, isUser, x: Math.round(xScore), y: Math.round(yScore), initials: getInitials(name) };
+  return rankings.overall.map((entry) => {
+    const { companyName: name, isUserCompany: isUser } = entry;
+    const xScore = byMetric[pricingKey]?.find((e) => e.companyName === name)?.score ?? 50;
+    const yScores = yKeys.map((k) => byMetric[k]?.find((e) => e.companyName === name)?.score ?? 50);
+    return {
+      name,
+      isUser,
+      x: Math.round(xScore),
+      y: Math.round(avg(yScores)),
+      initials: getInitials(name),
+    };
   });
 }
 
@@ -67,74 +94,82 @@ interface CustomDotProps {
   cx?: number;
   cy?: number;
   payload?: BrandPoint;
-  userColor?: string;
-  colorPool?: string[];
   namesIndex?: Map<string, number>;
 }
 
-function CustomDot({ cx = 0, cy = 0, payload, userColor = USER_COLOR, colorPool = COMPETITOR_COLORS, namesIndex }: CustomDotProps) {
+function CustomDot({ cx = 0, cy = 0, payload, namesIndex }: CustomDotProps) {
   if (!payload) return null;
-  const color = payload.isUser ? userColor : (colorPool[(namesIndex?.get(payload.name) ?? 0) % colorPool.length]);
-  const r = payload.isUser ? 22 : 16;
+  const color = payload.isUser
+    ? USER_COLOR
+    : COMPETITOR_COLORS[(namesIndex?.get(payload.name) ?? 0) % COMPETITOR_COLORS.length];
+  const r = payload.isUser ? 20 : 15;
+
+  // Position label using pre-computed direction vector (radiates away from cluster centroid)
+  const LABEL_DIST = r + 14;
+  const rawLx = cx + payload.labelDx * LABEL_DIST;
+  const rawLy = cy - payload.labelDy * LABEL_DIST; // SVG y is inverted vs data y
+
+  // Anchor based on horizontal direction
+  const anchor =
+    payload.labelDx > 0.35 ? "start" : payload.labelDx < -0.35 ? "end" : "middle";
 
   return (
-    <g className="recharts-scatter-dot-group" style={{ cursor: "pointer" }}>
-      <style>{`
-        .recharts-scatter-dot-group .dot-circle {
-          transition: r 0.2s ease, opacity 0.2s ease;
-        }
-        .recharts-scatter-dot-group:hover .dot-circle {
-          opacity: 1 !important;
-        }
-        .recharts-scatter-dot-group .dot-label {
-          transition: opacity 0.2s ease;
-        }
-        .recharts-scatter-dot-group:hover .dot-label {
-          opacity: 1 !important;
-        }
-      `}</style>
+    <g style={{ cursor: "pointer" }}>
       {payload.isUser && (
         <circle
           cx={cx}
           cy={cy}
-          r={r + 9}
+          r={r + 8}
           fill="none"
           stroke={color}
           strokeWidth={1.5}
-          opacity={0.35}
-          style={{ filter: `drop-shadow(0 0 8px ${color})` }}
+          opacity={0.3}
+          style={{ filter: `drop-shadow(0 0 10px ${color})` }}
         />
       )}
       <circle
-        className="dot-circle"
         cx={cx}
         cy={cy}
         r={r}
         fill={color}
-        opacity={0.88}
-        style={{ filter: `drop-shadow(0 0 ${payload.isUser ? 14 : 7}px ${color}99)` }}
+        opacity={0.9}
+        style={{
+          filter: `drop-shadow(0 0 ${payload.isUser ? 16 : 8}px ${color}99)`,
+          transition: "opacity 0.2s ease",
+        }}
       />
       <text
         x={cx}
         y={cy + 1}
         textAnchor="middle"
         dominantBaseline="middle"
-        fontSize={payload.isUser ? 11 : 9}
+        fontSize={payload.isUser ? 10 : 9}
         fontWeight="700"
         fill="#fff"
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
         {payload.initials}
       </text>
+      {/* Label line */}
+      <line
+        x1={cx + (payload.labelDx * (r + 2))}
+        y1={cy - (payload.labelDy * (r + 2))}
+        x2={cx + (payload.labelDx * (LABEL_DIST - 4))}
+        y2={cy - (payload.labelDy * (LABEL_DIST - 4))}
+        stroke={color}
+        strokeWidth={0.8}
+        opacity={0.4}
+        style={{ pointerEvents: "none" }}
+      />
       <text
-        className="dot-label"
-        x={cx}
-        y={cy - r - 9}
-        textAnchor="middle"
+        x={rawLx}
+        y={rawLy}
+        textAnchor={anchor}
+        dominantBaseline="middle"
         fontSize={10}
         fontWeight="600"
         fill={color}
-        opacity={payload.isUser ? 1 : 0.75}
+        opacity={payload.isUser ? 1 : 0.85}
         style={{ pointerEvents: "none", userSelect: "none" }}
       >
         {payload.name}
@@ -155,13 +190,13 @@ function CustomTooltip({ active, payload, yLabel }: TooltipProps) {
   return (
     <div className="bg-card/95 border border-border rounded-xl p-4 shadow-2xl backdrop-blur-md text-sm min-w-[160px]">
       <p className="font-bold text-foreground mb-2 text-base">{d.name}</p>
-      <div className="space-y-1">
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">Pricing</span>
+      <div className="space-y-1.5">
+        <div className="flex justify-between gap-6">
+          <span className="text-muted-foreground">Pricing score</span>
           <span className="font-mono font-semibold text-primary">{d.x}</span>
         </div>
-        <div className="flex justify-between gap-4">
-          <span className="text-muted-foreground">{yLabel}</span>
+        <div className="flex justify-between gap-6">
+          <span className="text-muted-foreground">{yLabel} score</span>
           <span className="font-mono font-semibold text-primary">{d.y}</span>
         </div>
         {d.isUser && (
@@ -176,6 +211,8 @@ function CustomTooltip({ active, payload, yLabel }: TooltipProps) {
 
 interface GraphProps {
   points: BrandPoint[];
+  xDomain: [number, number];
+  yDomain: [number, number];
   title: string;
   subtitle: string;
   xLeft: string;
@@ -189,6 +226,8 @@ interface GraphProps {
 
 function PositioningGraph({
   points,
+  xDomain,
+  yDomain,
   title,
   subtitle,
   xLeft,
@@ -202,11 +241,12 @@ function PositioningGraph({
   const namesIndex = useMemo(() => {
     const m = new Map<string, number>();
     let idx = 0;
-    points.forEach((p) => {
-      if (!p.isUser) { m.set(p.name, idx++); }
-    });
+    points.forEach((p) => { if (!p.isUser) m.set(p.name, idx++); });
     return m;
   }, [points]);
+
+  const xMid = Math.round((xDomain[0] + xDomain[1]) / 2);
+  const yMid = Math.round((yDomain[0] + yDomain[1]) / 2);
 
   return (
     <motion.div
@@ -218,7 +258,7 @@ function PositioningGraph({
     >
       <div className="absolute inset-0 bg-gradient-to-br from-primary/3 via-transparent to-secondary/3 pointer-events-none rounded-3xl" />
 
-      <div className="mb-8">
+      <div className="mb-6">
         <h3 className="text-2xl md:text-3xl font-display font-bold text-foreground">{title}</h3>
         <p className="text-muted-foreground mt-1 text-sm">{subtitle}</p>
       </div>
@@ -226,59 +266,45 @@ function PositioningGraph({
       <div className="relative">
         {quadrants && quadrantLabels && (
           <>
-            <div className="absolute top-2 left-[8%] z-10 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider pointer-events-none hidden sm:block">
+            <div className="absolute top-4 left-[10%] z-10 text-[9px] font-semibold text-muted-foreground/50 uppercase tracking-widest pointer-events-none hidden sm:block">
               {quadrantLabels[0]}
             </div>
-            <div className="absolute top-2 right-[4%] z-10 text-[10px] font-semibold text-primary/60 uppercase tracking-wider pointer-events-none hidden sm:block">
+            <div className="absolute top-4 right-[6%] z-10 text-[9px] font-semibold text-primary/50 uppercase tracking-widest pointer-events-none hidden sm:block">
               {quadrantLabels[1]}
             </div>
-            <div className="absolute bottom-[60px] left-[8%] z-10 text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider pointer-events-none hidden sm:block">
+            <div className="absolute bottom-[68px] left-[10%] z-10 text-[9px] font-semibold text-muted-foreground/40 uppercase tracking-widest pointer-events-none hidden sm:block">
               {quadrantLabels[2]}
             </div>
-            <div className="absolute bottom-[60px] right-[4%] z-10 text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-wider pointer-events-none hidden sm:block">
+            <div className="absolute bottom-[68px] right-[6%] z-10 text-[9px] font-semibold text-muted-foreground/40 uppercase tracking-widest pointer-events-none hidden sm:block">
               {quadrantLabels[3]}
             </div>
           </>
         )}
 
-        <ResponsiveContainer width="100%" height={420}>
-          <ScatterChart margin={{ top: 30, right: 40, bottom: 40, left: 20 }}>
-            <defs>
-              {quadrants && (
-                <>
-                  <linearGradient id="q1" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#06b6d4" stopOpacity="0.04" />
-                    <stop offset="100%" stopColor="#06b6d4" stopOpacity="0.01" />
-                  </linearGradient>
-                  <linearGradient id="q2" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#a78bfa" stopOpacity="0.04" />
-                    <stop offset="100%" stopColor="#a78bfa" stopOpacity="0.01" />
-                  </linearGradient>
-                </>
-              )}
-            </defs>
-
-            <CartesianGrid stroke={GRID_COLOR} strokeDasharray="4 4" />
+        <ResponsiveContainer width="100%" height={460}>
+          <ScatterChart margin={{ top: 50, right: 80, bottom: 56, left: 60 }}>
+            <CartesianGrid stroke={GRID_COLOR} strokeDasharray="3 6" />
 
             {quadrants && (
               <>
-                <ReferenceLine x={50} stroke="rgba(255,255,255,0.1)" strokeWidth={1} strokeDasharray="6 3" />
-                <ReferenceLine y={50} stroke="rgba(255,255,255,0.1)" strokeWidth={1} strokeDasharray="6 3" />
+                <ReferenceLine x={xMid} stroke="rgba(255,255,255,0.08)" strokeWidth={1} strokeDasharray="8 4" />
+                <ReferenceLine y={yMid} stroke="rgba(255,255,255,0.08)" strokeWidth={1} strokeDasharray="8 4" />
               </>
             )}
 
             <XAxis
               dataKey="x"
               type="number"
-              domain={[0, 100]}
+              domain={xDomain}
               tick={{ fill: AXIS_COLOR, fontSize: 10 }}
               axisLine={{ stroke: AXIS_COLOR }}
               tickLine={false}
+              tickCount={5}
               label={{
-                value: `← ${xLeft}    ${xRight} →`,
+                value: `← ${xLeft}   ·   ${xRight} →`,
                 position: "insideBottom",
-                offset: -20,
-                fill: "rgba(255,255,255,0.4)",
+                offset: -36,
+                fill: "rgba(255,255,255,0.35)",
                 fontSize: 11,
                 fontWeight: 500,
               }}
@@ -286,16 +312,17 @@ function PositioningGraph({
             <YAxis
               dataKey="y"
               type="number"
-              domain={[0, 100]}
+              domain={yDomain}
               tick={{ fill: AXIS_COLOR, fontSize: 10 }}
               axisLine={{ stroke: AXIS_COLOR }}
               tickLine={false}
+              tickCount={5}
               label={{
-                value: `${yBottom} ↑ ${yTop}`,
+                value: `${yBottom}  ↑  ${yTop}`,
                 angle: -90,
                 position: "insideLeft",
-                offset: 15,
-                fill: "rgba(255,255,255,0.4)",
+                offset: -44,
+                fill: "rgba(255,255,255,0.35)",
                 fontSize: 11,
                 fontWeight: 500,
               }}
@@ -305,25 +332,22 @@ function PositioningGraph({
             <Scatter
               data={points}
               shape={(props: any) => (
-                <CustomDot
-                  {...props}
-                  userColor={USER_COLOR}
-                  colorPool={COMPETITOR_COLORS}
-                  namesIndex={namesIndex}
-                />
+                <CustomDot {...props} namesIndex={namesIndex} />
               )}
               isAnimationActive
               animationBegin={200}
-              animationDuration={1000}
+              animationDuration={900}
               animationEasing="ease-out"
             />
           </ScatterChart>
         </ResponsiveContainer>
       </div>
 
-      <div className="flex flex-wrap gap-3 mt-6 pt-5 border-t border-border">
-        {points.map((p, i) => {
-          const color = p.isUser ? USER_COLOR : COMPETITOR_COLORS[(namesIndex.get(p.name) ?? 0) % COMPETITOR_COLORS.length];
+      <div className="flex flex-wrap gap-4 mt-4 pt-5 border-t border-border">
+        {points.map((p) => {
+          const color = p.isUser
+            ? USER_COLOR
+            : COMPETITOR_COLORS[(namesIndex.get(p.name) ?? 0) % COMPETITOR_COLORS.length];
           return (
             <div key={p.name} className="flex items-center gap-2">
               <div
@@ -350,14 +374,20 @@ const PERFORMANCE_METRICS = ["battery", "camera", "gaming", "durability", "susta
 const VISIBILITY_METRICS = ["social", "ad strength", "website ux", "website"];
 
 export function StrategicPositioning({ rankings }: Props) {
-  const perfPoints = useMemo(
-    () => buildPoints(rankings, PERFORMANCE_METRICS),
-    [rankings]
-  );
-  const visPoints = useMemo(
-    () => buildPoints(rankings, VISIBILITY_METRICS),
-    [rankings]
-  );
+  const perfPoints = useMemo(() => {
+    const raw = buildRawPoints(rankings, PERFORMANCE_METRICS);
+    return attachLabelOffsets(raw);
+  }, [rankings]);
+
+  const visPoints = useMemo(() => {
+    const raw = buildRawPoints(rankings, VISIBILITY_METRICS);
+    return attachLabelOffsets(raw);
+  }, [rankings]);
+
+  const perfXDomain = useMemo(() => computeDomain(perfPoints.map((p) => p.x)), [perfPoints]);
+  const perfYDomain = useMemo(() => computeDomain(perfPoints.map((p) => p.y)), [perfPoints]);
+  const visXDomain  = useMemo(() => computeDomain(visPoints.map((p) => p.x)), [visPoints]);
+  const visYDomain  = useMemo(() => computeDomain(visPoints.map((p) => p.y)), [visPoints]);
 
   return (
     <section className="py-32 px-6">
@@ -383,6 +413,8 @@ export function StrategicPositioning({ rankings }: Props) {
         <div className="space-y-10">
           <PositioningGraph
             points={perfPoints}
+            xDomain={perfXDomain}
+            yDomain={perfYDomain}
             title="Price vs Performance Positioning"
             subtitle="How brands balance product pricing against feature performance"
             xLeft="More Affordable"
@@ -394,6 +426,8 @@ export function StrategicPositioning({ rankings }: Props) {
 
           <PositioningGraph
             points={visPoints}
+            xDomain={visXDomain}
+            yDomain={visYDomain}
             title="Market Positioning Map"
             subtitle="Brand visibility versus pricing competitiveness across the market"
             xLeft="Budget"
