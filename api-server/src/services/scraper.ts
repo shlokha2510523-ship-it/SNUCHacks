@@ -279,8 +279,8 @@ CRITICAL RULES:
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-5.2",
-      max_completion_tokens: 2048,
+      model: "gpt-4o",
+      max_tokens: 1024,
       messages: [{ role: "user", content: prompt }],
       response_format: { type: "json_object" },
     });
