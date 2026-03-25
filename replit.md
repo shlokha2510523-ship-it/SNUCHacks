@@ -15,23 +15,31 @@ pnpm workspace monorepo using TypeScript. Consumer Electronics Marketing Intelli
 - **Validation**: Zod (`zod`), `drizzle-zod`
 - **API codegen**: Orval (from OpenAPI spec)
 - **Build**: esbuild (CJS bundle)
-- **AI**: Replit AI Integrations (OpenAI gpt-5.2)
+- **AI**: Replit AI Integrations (OpenAI)
 - **Frontend**: React + Vite, Tailwind CSS, Recharts, Framer Motion, React Hook Form
+
+## Replit Setup Notes
+
+- Packages are at workspace root (not in `artifacts/` or `lib/` subdirs as the original README implies)
+- `pnpm-workspace.yaml` updated to list packages by name at root level
+- All `tsconfig.json` files use `../tsconfig.base.json` (not `../../`)
+- API server runs on port 3001 (console workflow)
+- Frontend runs on port 5000 (webview workflow), proxies `/api/*` to port 3001
+- Database provisioned via Replit PostgreSQL, schema pushed with drizzle-kit
+- OpenAI integration added via Replit AI Integrations blueprint
 
 ## Structure
 
 ```text
-artifacts-monorepo/
-├── artifacts/              # Deployable applications
-│   ├── api-server/         # Express API server
-│   └── marketing-intel/    # React + Vite frontend (Spotify Wrapped-style dashboard)
-├── lib/                    # Shared libraries
-│   ├── api-spec/           # OpenAPI spec + Orval codegen config
-│   ├── api-client-react/   # Generated React Query hooks
-│   ├── api-zod/            # Generated Zod schemas from OpenAPI
-│   ├── db/                 # Drizzle ORM schema + DB connection
-│   ├── integrations-openai-ai-server/  # OpenAI server-side integration
-│   └── integrations-openai-ai-react/   # OpenAI React hooks
+workspace/
+├── api-server/             # Express API server
+├── marketing-intel/        # React + Vite frontend (Spotify Wrapped-style dashboard)
+├── api-client-react/       # Generated React Query hooks
+├── api-spec/               # OpenAPI spec + Orval codegen config
+├── api-zod/                # Generated Zod schemas from OpenAPI
+├── db/                     # Drizzle ORM schema + DB connection
+├── integrations-openai-ai-server/  # OpenAI server-side integration
+├── integrations-openai-ai-react/   # OpenAI React hooks
 ├── scripts/                # Utility scripts
 ├── pnpm-workspace.yaml     
 ├── tsconfig.base.json      
@@ -75,37 +83,28 @@ artifacts-monorepo/
 - `AI_INTEGRATIONS_OPENAI_API_KEY` — Replit AI key (auto-set)
 - `DATABASE_URL` — PostgreSQL connection string (auto-set by Replit)
 - `PORT` — Assigned port per service
+- `BASE_PATH` — Base path for Vite frontend (set to `/`)
 
-## TypeScript & Composite Projects
+## Workflows
 
-Every package extends `tsconfig.base.json` which sets `composite: true`. Run typecheck from root: `pnpm run typecheck`.
+- `Start application` (webview, port 5000) — Frontend: `PORT=5000 BASE_PATH=/ pnpm --filter @workspace/marketing-intel run dev`
+- `Backend API` (console, port 3001) — Backend: `PORT=3001 pnpm --filter @workspace/api-server run dev`
 
-## Root Scripts
+## Running Dev Commands
 
-- `pnpm run build` — runs `typecheck` first, then recursively runs `build`
-- `pnpm run typecheck` — runs `tsc --build --emitDeclarationOnly`
+```bash
+# Install all dependencies
+pnpm install
 
-## Packages
+# Push database schema
+pnpm --filter @workspace/db run push
 
-### `artifacts/api-server` (`@workspace/api-server`)
+# Run frontend dev server (port 5000)
+PORT=5000 BASE_PATH=/ pnpm --filter @workspace/marketing-intel run dev
 
-Express 5 API server with AI-powered competitive analysis routes.
+# Run backend dev server (port 3001)
+PORT=3001 pnpm --filter @workspace/api-server run dev
 
-- Entry: `src/index.ts`
-- App setup: `src/app.ts`
-- Routes: `src/routes/companies.ts` — all company/analysis/quick-fix routes
-- Services: `src/services/scraper.ts`, `src/services/ai-analysis.ts`
-- `pnpm --filter @workspace/api-server run dev`
-
-### `artifacts/marketing-intel` (`@workspace/marketing-intel`)
-
-React + Vite frontend. Spotify Wrapped-style marketing intelligence dashboard.
-
-- `pnpm --filter @workspace/marketing-intel run dev`
-- Pages: Home (landing), Setup (company input), Report (full Wrapped-style results)
-
-### `lib/db` (`@workspace/db`)
-
-Database layer. Tables: `company_sets`, `companies`, `analysis_results`.
-
-- `pnpm --filter @workspace/db run push` — push schema changes
+# Build all
+pnpm run build
+```

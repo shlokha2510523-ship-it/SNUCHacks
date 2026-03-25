@@ -1,7 +1,12 @@
 packages:
-  - artifacts/*
-  - lib/*
-  - lib/integrations/*
+  - api-server
+  - api-client-react
+  - api-spec
+  - api-zod
+  - db
+  - integrations-openai-ai-react
+  - integrations-openai-ai-server
+  - marketing-intel
   - scripts
 
 autoInstallPeers: false
