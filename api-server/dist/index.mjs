@@ -65746,7 +65746,7 @@ app.use("/api", routes_default);
 if (process.env.NODE_ENV === "production") {
   const staticDir = path2.resolve(__dirname2, "../../marketing-intel/dist/public");
   app.use(import_express5.default.static(staticDir));
-  app.get("*", (_req, res) => {
+  app.get("/{*path}", (_req, res) => {
     res.sendFile(path2.join(staticDir, "index.html"));
   });
 }
