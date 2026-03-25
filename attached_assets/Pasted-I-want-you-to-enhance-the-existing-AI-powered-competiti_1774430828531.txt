@@ -1,0 +1,63 @@
+I want you to enhance the existing AI-powered competitive intelligence web application (no UI/UX redesign required). The current system compares a user-input company with manually entered competitors. Modify the system so that the ONLY user input required is the company name.
+
+Core Change:
+When a user enters a consumer electronics company name, the system should automatically:
+
+1. Identify 4–5 key competitor companies using reliable signals such as market share, revenue, product similarity, and brand positioning.
+2. Fetch and validate the following data for both the user company and competitors:
+
+   * Official website URL
+   * Instagram handle
+   * Facebook page URL
+   * Advertisement data (via Facebook Ad Library or equivalent)
+
+Data Acquisition:
+
+* Use APIs, scraping tools, or search-based enrichment to retrieve company data.
+* Ensure accuracy by cross-verifying sources.
+* Hide all fetched data from the user (no manual input required).
+
+Processing Pipeline (retain existing architecture):
+
+* Collect data from websites, social media, and ad platforms.
+* Normalize and structure the data.
+* Perform time-based tracking and change detection.
+* Compare across:
+  • Core features (battery, camera, gaming, durability, sustainability, AI features)
+  • Marketing (ads, messaging, pricing, discounts)
+  • Website UX
+  • Social engagement
+
+AI Analysis Layer:
+
+* Generate:
+  • “Reasons for failure”
+  • Competitive strengths and weaknesses
+  • Trend detection
+  • Market gaps (whitespace opportunities)
+* Ensure insights are explainable and traceable to data sources.
+
+Output (DO NOT CHANGE DESIGN):
+
+* Maintain existing “Spotify Wrapped” style dashboard.
+* Show:
+  • Rankings vs competitors
+  • Strengths vs weaknesses
+  • Trend evolution
+  • Feature and marketing comparison
+  • Missed opportunities
+* Provide a one-click action system:
+  • Rewrite ad captions
+  • Suggest improved messaging
+  • Optimize Instagram bio/handle
+  • Generate strategic action plan
+
+Constraints:
+
+* No additional user inputs beyond company name.
+* All competitor selection and data retrieval must be automated.
+* Keep the current UI, layout, and flow unchanged.
+* Ensure fast response time using caching or pre-fetching where possible.
+
+Goal:
+Transform the application from a manual comparison tool into a fully automated competitive intelligence engine that requires minimal user input and delivers actionable insights.
