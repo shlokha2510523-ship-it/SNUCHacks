@@ -19,7 +19,7 @@ export interface ScrapeData {
     socialCrawled: boolean;
     adsCrawled: boolean;
     reviewsAvailable: boolean;
-    dataSource: "crawled" | "partial" | "unavailable";
+    dataSource: "crawled" | "partial" | "ai_generated" | "unavailable";
   };
   website?: {
     loadTime: number;
@@ -92,6 +92,14 @@ export async function scrapeAllCompanies(
   return results;
 }
 
+function isCrawlMeaningful(raw: RawWebsiteData | null): boolean {
+  if (!raw || !raw.fetchSuccess) return false;
+  const hasHeadings = raw.h1Tags.length > 0 || raw.h2Tags.length > 0;
+  const hasKeywords = raw.wordFrequencies.length > 0;
+  const hasContent = raw.bodyText.length > 200;
+  return hasHeadings || hasKeywords || hasContent;
+}
+
 async function scrapeCompanyRealData(company: Company): Promise<ScrapeData> {
   const cacheKey = `scrape:${company.website}`;
   const cached = crawlCache.get(cacheKey);
@@ -106,43 +114,52 @@ async function scrapeCompanyRealData(company: Company): Promise<ScrapeData> {
     fetchYouTubeAdsData(company.name, company.website).catch(() => null),
   ]);
 
-  // Step 2: Use AI to structure the REAL crawled content
-  const structuredData = await structureCrawledData(company, rawWebsite, rawSocial);
+  const crawlHasMeaningfulData = isCrawlMeaningful(rawWebsite);
 
-  const result: ScrapeData = {
-    _meta: {
-      crawledAt: new Date().toISOString(),
-      websiteCrawled: rawWebsite?.fetchSuccess ?? false,
-      socialCrawled: rawSocial?.fetchSuccess ?? false,
-      adsCrawled: false,
-      reviewsAvailable: false,
-      dataSource: rawWebsite?.fetchSuccess ? "crawled" : "partial",
-    },
-    website: structuredData.website,
-    social: structuredData.social,
-    ads: buildAdsFromYouTube(rawYouTube, rawWebsite),
-    features: structuredData.features,
-    reviews: {
-      averageRating: null,
-      totalReviews: null,
-      ratingDistribution: null,
-      commonComplaints: [],
-      positiveHighlights: [],
-      frequentlyMentionedFeatures: structuredData.features
-        ? Object.keys(
-            Object.fromEntries(
-              (["battery", "camera", "gaming", "durability", "sustainability", "ai"] as const).filter((k) => {
-                const key = `${k}Score` as keyof typeof structuredData.features;
-                return structuredData.features && (structuredData.features as any)[key] >= 60;
-              }).map((k) => [k, true])
-            )
-          )
-        : [],
-      sentimentScore: null,
-      recentReviewSamples: [],
-      _note: "Google Reviews integration requires a Google Places API key. Real review data is unavailable.",
-    },
-  };
+  let result: ScrapeData;
+
+  if (crawlHasMeaningfulData) {
+    // Step 2a: Real path — structure the actual crawled content
+    const structuredData = await structureCrawledData(company, rawWebsite, rawSocial);
+
+    result = {
+      _meta: {
+        crawledAt: new Date().toISOString(),
+        websiteCrawled: true,
+        socialCrawled: rawSocial?.fetchSuccess ?? false,
+        adsCrawled: rawYouTube?.fetchSuccess ?? false,
+        reviewsAvailable: false,
+        dataSource: "crawled",
+      },
+      website: structuredData.website,
+      social: structuredData.social,
+      ads: buildAdsFromYouTube(rawYouTube, rawWebsite),
+      features: structuredData.features,
+      reviews: buildUnavailableReviews(structuredData.features),
+    };
+  } else {
+    // Step 2b: Crawl returned empty — fall back to AI-generated mock data
+    const mockData = await generateAIMockData(company);
+
+    result = {
+      _meta: {
+        crawledAt: new Date().toISOString(),
+        websiteCrawled: false,
+        socialCrawled: false,
+        adsCrawled: rawYouTube?.fetchSuccess ?? false,
+        reviewsAvailable: false,
+        dataSource: "ai_generated",
+      },
+      website: mockData.website,
+      social: mockData.social,
+      // Still use real YouTube ads if we got them, even when website crawl failed
+      ads: rawYouTube?.fetchSuccess
+        ? buildAdsFromYouTube(rawYouTube, null)
+        : mockData.ads,
+      features: mockData.features,
+      reviews: mockData.reviews,
+    };
+  }
 
   crawlCache.set(cacheKey, result);
   return result;
@@ -371,6 +388,156 @@ function buildStructuredFallback(rawWebsite: RawWebsiteData | null): {
       priceRange: rawWebsite.pricingMentions.slice(0, 2).join(" - ") || "Not publicly listed",
       discounts: "Not specified",
       marketPositioning: "Unknown",
+    },
+  };
+}
+
+function buildUnavailableReviews(features?: ScrapeData["features"]): ScrapeData["reviews"] {
+  return {
+    averageRating: null,
+    totalReviews: null,
+    ratingDistribution: null,
+    commonComplaints: [],
+    positiveHighlights: [],
+    frequentlyMentionedFeatures: features
+      ? (["battery", "camera", "gaming", "durability", "sustainability", "ai"] as const)
+          .filter((k) => features && (features as any)[`${k}Score`] >= 60)
+      : [],
+    sentimentScore: null,
+    recentReviewSamples: [],
+    _note: "Google Reviews integration requires a Google Places API key. Real review data is unavailable.",
+  };
+}
+
+async function generateAIMockData(company: Company): Promise<{
+  website: ScrapeData["website"];
+  social: ScrapeData["social"];
+  ads: ScrapeData["ads"];
+  features: ScrapeData["features"];
+  reviews: ScrapeData["reviews"];
+}> {
+  const prompt = `You are a consumer electronics marketing intelligence analyst.
+Generate realistic marketing data for the company "${company.name}" (website: ${company.website}).
+This data should reflect what their real website, social media, and advertising would typically show.
+Base your estimates on the company's known market position, products, and industry reputation.
+
+Return a JSON object with EXACTLY this structure (no extra keys):
+{
+  "website": {
+    "loadTime": <number, seconds, e.g. 0.8>,
+    "mobileScore": <number 0-100>,
+    "seoScore": <number 0-100>,
+    "designScore": <number 0-100>,
+    "ctaCount": <number>,
+    "pricingVisible": <boolean>,
+    "keyMessages": [<3-5 short brand slogans or headlines>],
+    "topKeywords": [<6-8 keywords from their website>]
+  },
+  "social": {
+    "instagramFollowers": <number or null>,
+    "instagramEngagementRate": <number or null>,
+    "postFrequency": <posts per week, number or null>,
+    "avgLikes": <number or null>,
+    "avgComments": <number or null>,
+    "contentThemes": [<3-4 content themes>],
+    "bio": "<one line bio>",
+    "recentCaptions": [<2-3 realistic caption examples>]
+  },
+  "ads": {
+    "activeAdsCount": <number>,
+    "adFormats": [<formats like "Video", "Carousel", "Stories">],
+    "avgAdDuration": <seconds or null>,
+    "primaryMessage": "<main ad message>",
+    "callToAction": "<CTA text>",
+    "estimatedSpend": "<spend estimate string>",
+    "adExamples": [<3-4 realistic ad headline examples>]
+  },
+  "features": {
+    "batteryScore": <number 0-100>,
+    "cameraScore": <number 0-100>,
+    "gamingScore": <number 0-100>,
+    "durabilityScore": <number 0-100>,
+    "sustainabilityScore": <number 0-100>,
+    "aiFeatureScore": <number 0-100>,
+    "priceRange": "<price range string>",
+    "discounts": "<discount info or 'Not specified'>",
+    "marketPositioning": "<'budget' | 'mid-range' | 'premium' | 'ultra-premium'>"
+  },
+  "reviews": {
+    "averageRating": <number 1-5 or null>,
+    "totalReviews": <number or null>,
+    "ratingDistribution": {"5": <pct>, "4": <pct>, "3": <pct>, "2": <pct>, "1": <pct>},
+    "commonComplaints": [<2-3 common complaint themes>],
+    "positiveHighlights": [<2-3 positive highlight themes>],
+    "frequentlyMentionedFeatures": [<3-4 features>],
+    "sentimentScore": <number 0-100 or null>,
+    "recentReviewSamples": [<2-3 short realistic review quotes>]
+  }
+}
+Return ONLY the JSON object. No markdown, no explanation.`;
+
+  const response = await openai.chat.completions.create({
+    model: "gpt-4o",
+    messages: [{ role: "user", content: prompt }],
+    response_format: { type: "json_object" },
+    temperature: 0.7,
+  });
+
+  const raw = JSON.parse(response.choices[0].message.content ?? "{}");
+
+  return {
+    website: {
+      loadTime: raw.website?.loadTime ?? 1.0,
+      mobileScore: raw.website?.mobileScore ?? 70,
+      seoScore: raw.website?.seoScore ?? 70,
+      designScore: raw.website?.designScore ?? 70,
+      ctaCount: raw.website?.ctaCount ?? 5,
+      pricingVisible: raw.website?.pricingVisible ?? false,
+      keyMessages: raw.website?.keyMessages ?? [],
+      topKeywords: raw.website?.topKeywords ?? [],
+    },
+    social: {
+      instagramFollowers: raw.social?.instagramFollowers ?? null,
+      instagramEngagementRate: raw.social?.instagramEngagementRate ?? null,
+      postFrequency: raw.social?.postFrequency ?? null,
+      avgLikes: raw.social?.avgLikes ?? null,
+      avgComments: raw.social?.avgComments ?? null,
+      contentThemes: raw.social?.contentThemes ?? [],
+      bio: raw.social?.bio ?? "",
+      recentCaptions: raw.social?.recentCaptions ?? [],
+      _note: "Website crawl returned no data. This social data is AI-estimated based on the company's known market presence.",
+    },
+    ads: {
+      activeAdsCount: raw.ads?.activeAdsCount ?? null,
+      adFormats: raw.ads?.adFormats ?? [],
+      avgAdDuration: raw.ads?.avgAdDuration ?? null,
+      primaryMessage: raw.ads?.primaryMessage ?? "",
+      callToAction: raw.ads?.callToAction ?? "",
+      estimatedSpend: raw.ads?.estimatedSpend ?? "Unavailable",
+      adExamples: raw.ads?.adExamples ?? [],
+      _note: "Website crawl returned no data. This ad data is AI-estimated based on the company's known advertising patterns.",
+    },
+    features: {
+      batteryScore: raw.features?.batteryScore ?? 50,
+      cameraScore: raw.features?.cameraScore ?? 50,
+      gamingScore: raw.features?.gamingScore ?? 50,
+      durabilityScore: raw.features?.durabilityScore ?? 50,
+      sustainabilityScore: raw.features?.sustainabilityScore ?? 40,
+      aiFeatureScore: raw.features?.aiFeatureScore ?? 50,
+      priceRange: raw.features?.priceRange ?? "Not publicly listed",
+      discounts: raw.features?.discounts ?? "Not specified",
+      marketPositioning: raw.features?.marketPositioning ?? "mid-range",
+    },
+    reviews: {
+      averageRating: raw.reviews?.averageRating ?? null,
+      totalReviews: raw.reviews?.totalReviews ?? null,
+      ratingDistribution: raw.reviews?.ratingDistribution ?? null,
+      commonComplaints: raw.reviews?.commonComplaints ?? [],
+      positiveHighlights: raw.reviews?.positiveHighlights ?? [],
+      frequentlyMentionedFeatures: raw.reviews?.frequentlyMentionedFeatures ?? [],
+      sentimentScore: raw.reviews?.sentimentScore ?? null,
+      recentReviewSamples: raw.reviews?.recentReviewSamples ?? [],
+      _note: "Website crawl returned no data. This review data is AI-estimated based on the company's known reputation.",
     },
   };
 }
