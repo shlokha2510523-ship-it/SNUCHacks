@@ -1,0 +1,20 @@
+packages:
+  "framer-motion": "For the cinematic, Wrapped-style reveal animations and page transitions"
+  "recharts": "For metric bar charts and data visualization"
+  "react-hook-form": "For complex setup forms with dynamic arrays"
+  "@hookform/resolvers": "For Zod form validation integration"
+  "clsx": "Utility for constructing className strings conditionally"
+  "tailwind-merge": "Utility to merge tailwind classes without style conflicts"
+
+images:
+  - path: "artifacts/marketing-intel/public/images/hero-abstract.png"
+    description: "Dark moody abstract 3D geometric shapes in electric cyan and purple, cinematic lighting, extreme macro, depth of field, premium tech aesthetic"
+    aspect_ratio: "16:9"
+  - path: "artifacts/marketing-intel/public/images/data-mesh.png"
+    description: "Glowing digital data mesh background in dark space, high tech, analytics visualization, subtle electric blue and purple glow, minimal"
+    aspect_ratio: "16:9"
+
+notes:
+  - Using generated React Query hooks from @workspace/api-client-react
+  - Dashboard report relies on framer-motion for scroll-triggered "Spotify Wrapped" style reveals
+  - Orchestration of scrape -> analyze happens sequentially on the client if a new report is triggered
