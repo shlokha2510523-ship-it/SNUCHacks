@@ -1,0 +1,93 @@
+You are enhancing an existing web application. Do NOT change any UI design, layout, or existing functionality except for the additions described below.
+
+Task 1: Integrate Google Reviews into Analysis
+
+Objective:
+Include Google Reviews as an additional data source for competitor and user company analysis.
+
+Requirements:
+
+1. Collect and process Google Reviews for:
+
+   * User company
+   * Automatically selected competitors
+
+2. Extract key insights:
+
+   * Common complaints (battery, pricing, durability, etc.)
+   * Positive highlights
+   * Frequently mentioned features
+   * Sentiment trends
+
+3. Integrate this into the existing analysis pipeline:
+
+   * Use reviews as part of:
+     • “Reasons for Failure”
+     • Trend detection
+     • Feature comparison
+   * Ensure review insights influence scoring and gap detection
+
+4. Keep this fully automated:
+
+   * No user input required
+   * Data fetching should be hidden
+
+---
+
+Task 2: Add New Section – “Whitespaces You Can Focus On”
+
+Placement:
+Insert this section immediately AFTER the **“Next Hit Products”** section.
+
+Purpose:
+Identify underserved or ignored customer segments based on full system analysis.
+
+Logic:
+
+1. Analyze combined data:
+
+   * Competitor marketing
+   * Product features
+   * Social media trends
+   * Ads
+   * Google Reviews
+
+2. Identify audience segments that are:
+
+   * Least targeted
+   * Poorly addressed
+   * Repeatedly mentioned in unmet needs
+
+3. Rank and output:
+
+   * Top 3 underserved segments (lowest focus across competitors)
+
+Examples (for guidance):
+
+* Budget-conscious gamers
+* Sustainability-focused buyers
+* Students needing long battery life
+* Creators needing camera + AI tools
+
+Output Format:
+For each segment, display:
+
+1. Segment Name
+2. Description (who they are)
+3. Why they are underserved (based on data)
+4. Opportunity insight (what the company can do)
+
+UI Requirements:
+
+* Follow existing card-based or section styling
+* Keep design consistent with other sections
+* No layout redesign
+
+Constraints:
+
+* Do NOT modify existing sections
+* Do NOT change UI styling or flow
+* Only add this new section and extend backend logic
+
+Goal:
+Enhance the system by incorporating real customer feedback (Google Reviews) and surfacing actionable “whitespace” opportunities where companies can capture untapped markets.

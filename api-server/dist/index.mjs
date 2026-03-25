@@ -64863,6 +64863,12 @@ async function analyzeCompetitiveData(userCompany, competitors) {
   const allCompanies = [userCompany, ...competitors];
   const companiesContext = allCompanies.map((c) => {
     const data = c.scrapeData || {};
+    const reviewsBlock = data.reviews ? `
+Google Reviews: rating=${data.reviews.averageRating}/5 (${data.reviews.totalReviews} reviews), sentiment=${data.reviews.sentimentScore}%
+Common complaints: ${data.reviews.commonComplaints?.join("; ") || "N/A"}
+Positive highlights: ${data.reviews.positiveHighlights?.join("; ") || "N/A"}
+Frequently mentioned features: ${data.reviews.frequentlyMentionedFeatures?.join(", ") || "N/A"}
+Recent review samples: ${data.reviews.recentReviewSamples?.join(" | ") || "N/A"}` : "";
     return `
 Company: ${c.name} (${c.isUserCompany ? "USER COMPANY" : "COMPETITOR"})
 Website: ${c.website}
@@ -64873,14 +64879,20 @@ Content themes: ${data.social?.contentThemes?.join(", ") || "N/A"}
 Ads: activeAds=${data.ads?.activeAdsCount}, spend=${data.ads?.estimatedSpend}, formats=${data.ads?.adFormats?.join(", ")}
 Primary ad message: ${data.ads?.primaryMessage || "N/A"}
 Features - battery=${data.features?.batteryScore}, camera=${data.features?.cameraScore}, gaming=${data.features?.gamingScore}, durability=${data.features?.durabilityScore}, sustainability=${data.features?.sustainabilityScore}, ai=${data.features?.aiFeatureScore}
-Price range: ${data.features?.priceRange}, Positioning: ${data.features?.marketPositioning}
+Price range: ${data.features?.priceRange}, Positioning: ${data.features?.marketPositioning}${reviewsBlock}
 `;
   }).join("\n---\n");
   const prompt = `You are a world-class competitive marketing intelligence analyst specializing in consumer electronics.
 
-Here is the collected marketing data for ${userCompany.name} and its competitors:
+Here is the collected marketing data for ${userCompany.name} and its competitors. Data includes website metrics, social media, ads, product features, AND Google Reviews sentiment analysis:
 
 ${companiesContext}
+
+IMPORTANT ANALYSIS INSTRUCTIONS:
+- Use Google Reviews data (complaints, highlights, sentiment scores) to directly inform "Reasons for Failure" \u2014 if customers complain about battery or support, that must appear as a failure reason.
+- Review sentiment scores should influence overall scoring: lower sentiment = lower score contribution.
+- Frequently mentioned complaints that competitors don't share should be flagged as critical failure points.
+- Use unmet customer needs from reviews to identify whitespace and underserved segment opportunities.
 
 Perform a comprehensive competitive analysis. Return a JSON object with exactly this structure:
 
@@ -64986,18 +64998,27 @@ Perform a comprehensive competitive analysis. Return a JSON object with exactly 
         "contentStyle": "<their content style>"
       }
     ],
-    "whitespaceOpportunities": [<3-5 untapped market opportunities the user company could own>]
+    "whitespaceOpportunities": [<3-5 untapped market opportunities the user company could own>],
+    "underservedSegments": [
+      {
+        "segmentName": "<specific audience segment name, e.g. 'Budget-conscious gamers'>",
+        "description": "<1-2 sentences: who they are, demographics, key traits>",
+        "whyUnderserved": "<1-2 sentences: based on competitor ads, reviews, and feature data \u2014 why no one is serving them well>",
+        "opportunityInsight": "<1-2 sentences: what the user company could do to capture this segment>"
+      }
+    ]
   }
 }
 
 Make the analysis specific, actionable, and data-driven. Include exactly:
-- 3-6 reasons for failure
+- 3-6 reasons for failure (at least 1-2 must be directly grounded in Google Reviews complaints)
 - 4-6 missed opportunities  
 - One insight per competitor
 - 3-5 immediate actions, 3-4 short-term actions, 3-4 long-term actions
 - 5-7 industry trends
 - One trend entry per competitor
 - 3-5 whitespace opportunities
+- Exactly 3 underserved segments (grounded in review unmet needs + competitor targeting gaps)
 
 Company IDs for reference: ${allCompanies.map((c) => `${c.name}=${c.id}`).join(", ")}`;
   const response = await openai.chat.completions.create({
@@ -65028,7 +65049,7 @@ async function scrapeAllCompanies(companies) {
 async function generateSimulatedScrapeData(company) {
   const prompt = `You are a web scraper and marketing analyst. Generate realistic marketing intelligence data for the consumer electronics company "${company.name}" with website "${company.website}"${company.instagramHandle ? ` and Instagram @${company.instagramHandle}` : ""}.
 
-Generate realistic but simulated data that would be gathered from their website, social media, and Facebook ad library. Make the scores and metrics feel authentic and varied for this specific brand.
+Generate realistic but simulated data that would be gathered from their website, social media, Facebook ad library, and Google Reviews. Make the scores and metrics feel authentic and varied for this specific brand.
 
 Return a JSON object with this exact structure:
 {
@@ -65071,6 +65092,16 @@ Return a JSON object with this exact structure:
     "priceRange": "<e.g. '$299-$999'>",
     "discounts": "<current discount strategy>",
     "marketPositioning": "<premium/mid-range/budget/etc>"
+  },
+  "reviews": {
+    "averageRating": <number 3.0-4.8>,
+    "totalReviews": <number 500-50000 relevant to brand size>,
+    "ratingDistribution": { "5": <percent 0-100>, "4": <percent>, "3": <percent>, "2": <percent>, "1": <percent> },
+    "commonComplaints": [<3-5 specific complaints real customers mention, e.g. "battery drains fast under heavy load", "customer support slow to respond">],
+    "positiveHighlights": [<3-4 things customers love, e.g. "stunning display quality", "fast charging">],
+    "frequentlyMentionedFeatures": [<4-6 features most mentioned in reviews>],
+    "sentimentScore": <number 40-90, overall positive sentiment percentage>,
+    "recentReviewSamples": [<2-3 realistic short review snippets, 1-2 sentences each>]
   }
 }`;
   const response = await openai.chat.completions.create({
@@ -65124,6 +65155,19 @@ function generateFallbackData(companyName) {
       priceRange: "$299-$899",
       discounts: "Seasonal sales, trade-in offers",
       marketPositioning: "mid-range"
+    },
+    reviews: {
+      averageRating: 3.5 + seed % 12 / 10,
+      totalReviews: 2e3 + seed * 300,
+      ratingDistribution: { "5": 40, "4": 25, "3": 15, "2": 10, "1": 10 },
+      commonComplaints: ["Battery drains faster than expected", "Customer support response times are slow", "Software updates occasionally cause bugs"],
+      positiveHighlights: ["Excellent display quality", "Solid build quality", "Good value for the price"],
+      frequentlyMentionedFeatures: ["battery life", "camera", "display", "performance", "build quality"],
+      sentimentScore: 62 + seed % 20,
+      recentReviewSamples: [
+        "Great phone overall but the battery could be better for heavy users.",
+        "Setup was easy and the display is gorgeous. Happy with the purchase."
+      ]
     }
   };
 }

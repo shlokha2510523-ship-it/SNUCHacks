@@ -50,6 +50,16 @@ interface ScrapeData {
     discounts: string;
     marketPositioning: string;
   };
+  reviews?: {
+    averageRating: number;
+    totalReviews: number;
+    ratingDistribution: { "5": number; "4": number; "3": number; "2": number; "1": number };
+    commonComplaints: string[];
+    positiveHighlights: string[];
+    frequentlyMentionedFeatures: string[];
+    sentimentScore: number;
+    recentReviewSamples: string[];
+  };
 }
 
 export async function scrapeAllCompanies(companies: Company[]): Promise<Array<{ companyId: number; companyName: string; data: ScrapeData }>> {
@@ -69,7 +79,7 @@ export async function scrapeAllCompanies(companies: Company[]): Promise<Array<{ 
 async function generateSimulatedScrapeData(company: Company): Promise<ScrapeData> {
   const prompt = `You are a web scraper and marketing analyst. Generate realistic marketing intelligence data for the consumer electronics company "${company.name}" with website "${company.website}"${company.instagramHandle ? ` and Instagram @${company.instagramHandle}` : ""}.
 
-Generate realistic but simulated data that would be gathered from their website, social media, and Facebook ad library. Make the scores and metrics feel authentic and varied for this specific brand.
+Generate realistic but simulated data that would be gathered from their website, social media, Facebook ad library, and Google Reviews. Make the scores and metrics feel authentic and varied for this specific brand.
 
 Return a JSON object with this exact structure:
 {
@@ -112,6 +122,16 @@ Return a JSON object with this exact structure:
     "priceRange": "<e.g. '$299-$999'>",
     "discounts": "<current discount strategy>",
     "marketPositioning": "<premium/mid-range/budget/etc>"
+  },
+  "reviews": {
+    "averageRating": <number 3.0-4.8>,
+    "totalReviews": <number 500-50000 relevant to brand size>,
+    "ratingDistribution": { "5": <percent 0-100>, "4": <percent>, "3": <percent>, "2": <percent>, "1": <percent> },
+    "commonComplaints": [<3-5 specific complaints real customers mention, e.g. "battery drains fast under heavy load", "customer support slow to respond">],
+    "positiveHighlights": [<3-4 things customers love, e.g. "stunning display quality", "fast charging">],
+    "frequentlyMentionedFeatures": [<4-6 features most mentioned in reviews>],
+    "sentimentScore": <number 40-90, overall positive sentiment percentage>,
+    "recentReviewSamples": [<2-3 realistic short review snippets, 1-2 sentences each>]
   }
 }`;
 
@@ -168,6 +188,19 @@ function generateFallbackData(companyName: string): ScrapeData {
       priceRange: "$299-$899",
       discounts: "Seasonal sales, trade-in offers",
       marketPositioning: "mid-range",
+    },
+    reviews: {
+      averageRating: 3.5 + (seed % 12) / 10,
+      totalReviews: 2000 + seed * 300,
+      ratingDistribution: { "5": 40, "4": 25, "3": 15, "2": 10, "1": 10 },
+      commonComplaints: ["Battery drains faster than expected", "Customer support response times are slow", "Software updates occasionally cause bugs"],
+      positiveHighlights: ["Excellent display quality", "Solid build quality", "Good value for the price"],
+      frequentlyMentionedFeatures: ["battery life", "camera", "display", "performance", "build quality"],
+      sentimentScore: 62 + (seed % 20),
+      recentReviewSamples: [
+        "Great phone overall but the battery could be better for heavy users.",
+        "Setup was easy and the display is gorgeous. Happy with the purchase.",
+      ],
     },
   };
 }

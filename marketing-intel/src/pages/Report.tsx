@@ -16,6 +16,7 @@ import { Trophy, Target, TrendingUp, AlertTriangle, Lightbulb, Activity, Chevron
 import { getSeverityColor, getEffortColor } from "@/lib/utils";
 import { StrategicPositioning } from "@/components/StrategicPositioning";
 import { NextHitProducts } from "@/components/NextHitProducts";
+import { WhitespacesSection } from "@/components/WhitespacesSection";
 
 export default function Report() {
   const [, params] = useRoute("/report/:id");
@@ -229,6 +230,9 @@ export default function Report() {
         analysis={analysis}
         companyName={companySet.userCompany.name}
       />
+
+      {/* WHITESPACES YOU CAN FOCUS ON */}
+      <WhitespacesSection trends={trends} />
 
       {/* STRATEGIC POSITIONING */}
       <StrategicPositioning rankings={rankings} />

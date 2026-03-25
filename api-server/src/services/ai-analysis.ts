@@ -107,6 +107,12 @@ export async function analyzeCompetitiveData(
 
   const companiesContext = allCompanies.map((c) => {
     const data = c.scrapeData || {};
+    const reviewsBlock = data.reviews ? `
+Google Reviews: rating=${data.reviews.averageRating}/5 (${data.reviews.totalReviews} reviews), sentiment=${data.reviews.sentimentScore}%
+Common complaints: ${data.reviews.commonComplaints?.join("; ") || "N/A"}
+Positive highlights: ${data.reviews.positiveHighlights?.join("; ") || "N/A"}
+Frequently mentioned features: ${data.reviews.frequentlyMentionedFeatures?.join(", ") || "N/A"}
+Recent review samples: ${data.reviews.recentReviewSamples?.join(" | ") || "N/A"}` : "";
     return `
 Company: ${c.name} (${c.isUserCompany ? "USER COMPANY" : "COMPETITOR"})
 Website: ${c.website}
@@ -117,15 +123,21 @@ Content themes: ${data.social?.contentThemes?.join(", ") || "N/A"}
 Ads: activeAds=${data.ads?.activeAdsCount}, spend=${data.ads?.estimatedSpend}, formats=${data.ads?.adFormats?.join(", ")}
 Primary ad message: ${data.ads?.primaryMessage || "N/A"}
 Features - battery=${data.features?.batteryScore}, camera=${data.features?.cameraScore}, gaming=${data.features?.gamingScore}, durability=${data.features?.durabilityScore}, sustainability=${data.features?.sustainabilityScore}, ai=${data.features?.aiFeatureScore}
-Price range: ${data.features?.priceRange}, Positioning: ${data.features?.marketPositioning}
+Price range: ${data.features?.priceRange}, Positioning: ${data.features?.marketPositioning}${reviewsBlock}
 `;
   }).join("\n---\n");
 
   const prompt = `You are a world-class competitive marketing intelligence analyst specializing in consumer electronics.
 
-Here is the collected marketing data for ${userCompany.name} and its competitors:
+Here is the collected marketing data for ${userCompany.name} and its competitors. Data includes website metrics, social media, ads, product features, AND Google Reviews sentiment analysis:
 
 ${companiesContext}
+
+IMPORTANT ANALYSIS INSTRUCTIONS:
+- Use Google Reviews data (complaints, highlights, sentiment scores) to directly inform "Reasons for Failure" — if customers complain about battery or support, that must appear as a failure reason.
+- Review sentiment scores should influence overall scoring: lower sentiment = lower score contribution.
+- Frequently mentioned complaints that competitors don't share should be flagged as critical failure points.
+- Use unmet customer needs from reviews to identify whitespace and underserved segment opportunities.
 
 Perform a comprehensive competitive analysis. Return a JSON object with exactly this structure:
 
@@ -231,18 +243,27 @@ Perform a comprehensive competitive analysis. Return a JSON object with exactly 
         "contentStyle": "<their content style>"
       }
     ],
-    "whitespaceOpportunities": [<3-5 untapped market opportunities the user company could own>]
+    "whitespaceOpportunities": [<3-5 untapped market opportunities the user company could own>],
+    "underservedSegments": [
+      {
+        "segmentName": "<specific audience segment name, e.g. 'Budget-conscious gamers'>",
+        "description": "<1-2 sentences: who they are, demographics, key traits>",
+        "whyUnderserved": "<1-2 sentences: based on competitor ads, reviews, and feature data — why no one is serving them well>",
+        "opportunityInsight": "<1-2 sentences: what the user company could do to capture this segment>"
+      }
+    ]
   }
 }
 
 Make the analysis specific, actionable, and data-driven. Include exactly:
-- 3-6 reasons for failure
+- 3-6 reasons for failure (at least 1-2 must be directly grounded in Google Reviews complaints)
 - 4-6 missed opportunities  
 - One insight per competitor
 - 3-5 immediate actions, 3-4 short-term actions, 3-4 long-term actions
 - 5-7 industry trends
 - One trend entry per competitor
 - 3-5 whitespace opportunities
+- Exactly 3 underserved segments (grounded in review unmet needs + competitor targeting gaps)
 
 Company IDs for reference: ${allCompanies.map((c) => `${c.name}=${c.id}`).join(", ")}`;
 
