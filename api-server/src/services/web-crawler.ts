@@ -40,7 +40,7 @@ export interface RawSocialData {
 const USER_AGENT =
   "Mozilla/5.0 (compatible; MarketingIntelBot/1.0; +https://marketing-intel.replit.app)";
 
-const FETCH_TIMEOUT_MS = 6000;
+const FETCH_TIMEOUT_MS = 12000;
 
 const CTA_KEYWORDS = [
   "buy", "shop", "order", "get", "try", "start", "sign up", "sign-up", "signup",
@@ -324,7 +324,7 @@ export async function crawlInstagramPublic(handle: string): Promise<RawSocialDat
 
   try {
     const url = `https://www.instagram.com/${handle}/`;
-    const response = await fetchWithTimeout(url, 5000);
+    const response = await fetchWithTimeout(url, 8000);
     if (!response.ok) return result;
 
     const html = await response.text();

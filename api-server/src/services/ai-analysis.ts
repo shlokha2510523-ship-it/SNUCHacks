@@ -310,8 +310,8 @@ Make the analysis specific, actionable, and grounded in the real crawled data. I
 Company IDs for reference: ${allCompanies.map((c) => `${c.name}=${c.id}`).join(", ")}`;
 
   const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    max_tokens: 4096,
+    model: "gpt-5.2",
+    max_completion_tokens: 8192,
     messages: [{ role: "user", content: prompt }],
     response_format: { type: "json_object" },
   });
